@@ -1,6 +1,8 @@
 language: android # project in Android environment
 jdk:
    - oraclejdk8
+sudo: false
+
 android:
    components:
       - tools # latest version of Android SDK tools
@@ -13,3 +15,14 @@ android:
       - 'android-sdk-preview-licesnse-52d11cd2'
       - 'android-sdk-license-.+'
       - 'google-gdk-license-.+'
+
+env:
+   global:
+   # install timeout in minutes
+      - ADB_INSTALL_TIMEOUT=8
+
+before_script:
+   - echo no | android create avd --force -n test -t android-25 --abi armeabi-v7a
+   - emulator -avd test -no-skin -no-audio -no-window &
+   - android-wait-for-emulator
+   - adb shell input keyevent 82 &
