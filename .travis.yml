@@ -3,5 +3,5 @@ android:
    components:
       - tools # latest version of Android SDK tools
       - platform-tools # ' '
-      - build-tools-23.0.1 # build tools version of our project
-      - android-15
+      - build-tools-25.0.2 # build tools version of our project
+      - android-25
