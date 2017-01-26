@@ -1,4 +1,7 @@
-language: android
+language: android # project in Android environment
 android:
 	components:
-		- build-tools-23.0.1
+		- tools # latest version of Android SDK tools
+		- platform-tools # ' '
+		- build-tools-23.0.1 # build tools version of our project
+		- android-15
