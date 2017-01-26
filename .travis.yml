@@ -5,3 +5,6 @@ android:
 		- platform-tools # ' '
 		- build-tools-23.0.1 # build tools version of our project
 		- android-15
+
+	script:
+		- ./gradlew build connectedCheck
