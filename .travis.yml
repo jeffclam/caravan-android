@@ -1,4 +1,6 @@
 language: android # project in Android environment
+jdk:
+   - oraclejdk8
 android:
    components:
       - tools # latest version of Android SDK tools
