@@ -1,6 +1,10 @@
 package com.caravan.senior_project.caravan_android;
 
+import android.animation.ObjectAnimator;
+import android.animation.TypeEvaluator;
+import android.animation.ValueAnimator;
 import android.os.Bundle;
+import android.support.annotation.NonNull;
 import android.support.design.widget.FloatingActionButton;
 import android.support.design.widget.Snackbar;
 import android.support.v7.app.AppCompatActivity;
@@ -9,7 +13,12 @@ import android.view.View;
 import android.view.Menu;
 import android.view.MenuItem;
 
+import com.mapbox.geocoder.MapboxGeocoder;
+import com.mapbox.geocoder.android.AndroidGeocoder;
 import com.mapbox.mapboxsdk.MapboxAccountManager;
+import com.mapbox.mapboxsdk.annotations.Marker;
+import com.mapbox.mapboxsdk.annotations.MarkerOptions;
+import com.mapbox.mapboxsdk.geometry.LatLng;
 import com.mapbox.mapboxsdk.maps.MapView;
 import com.mapbox.mapboxsdk.maps.MapboxMap;
 import com.mapbox.mapboxsdk.maps.OnMapReadyCallback;
@@ -27,13 +36,40 @@ public class MainActivity extends AppCompatActivity {
         mapView = (MapView) findViewById(R.id.mapview);
         mapView.onCreate(savedInstanceState);
 
+        /*AndroidGeocoder geocoder = new AndroidGeocoder(context, Locale.getDefault());
+        geocoder.setAccessToken("pk.eyJ1IjoibmFuY3l0cnVvbmciLCJhIjoiY2l5a254N2kxMDAxdDJxczc3ejRwbHlweSJ9.-zGT-uLt61yIz6hpROnZ5Q");
+        addresses = geocoder.getFromLocation(
+                location.getLatitude(),
+                location.getLongitude(),
+                1);*/
+
         // Add a MapboxMap
         mapView.getMapAsync(new OnMapReadyCallback() {
             @Override
             public void onMapReady(MapboxMap mapboxMap) {
 
                 // Customize map with markers, polylines, etc.
+                /*MapboxGeocoder client = new MapboxGeocoder.Builder()
+                        .setAccessToken("pk.eyJ1IjoibmFuY3l0cnVvbmciLCJhIjoiY2l5a254N2kxMDAxdDJxczc3ejRwbHlweSJ9.-zGT-uLt61yIz6hpROnZ5Q")
+                        .setLocation("The White House")
+                        .build();*/
+                final Marker marker = mapboxMap.addMarker(new MarkerOptions()
+                        .position(new LatLng(38.897, -77.036))
+                        .title("The White House")
+                        .snippet("Home of the last surviving Oompa Loompa"));
 
+                mapboxMap.setOnMapClickListener(new MapboxMap.OnMapClickListener() {
+                    @Override
+                    public void onMapClick(@NonNull LatLng point) {
+
+                        // When the user clicks on the map, we want to animate the marker to that
+                        // location.
+                        ValueAnimator markerAnimator = ObjectAnimator.ofObject(marker, "position",
+                                new LatLngEvaluator(), marker.getPosition(), point);
+                        markerAnimator.setDuration(2000);
+                        markerAnimator.start();
+                    }
+                });
             }
         });
 
@@ -59,5 +95,50 @@ public class MainActivity extends AppCompatActivity {
         }
 
         return super.onOptionsItemSelected(item);
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+        mapView.onResume();
+    }
+
+    @Override
+    public void onPause() {
+        super.onPause();
+        mapView.onPause();
+    }
+
+    @Override
+    public void onSaveInstanceState(Bundle outState) {
+        super.onSaveInstanceState(outState);
+        mapView.onSaveInstanceState(outState);
+    }
+
+    @Override
+    public void onLowMemory() {
+        super.onLowMemory();
+        mapView.onLowMemory();
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        mapView.onDestroy();
+    }
+
+    private static class LatLngEvaluator implements TypeEvaluator<LatLng> {
+        // Method is used to interpolate the marker animation.
+
+        private LatLng latLng = new LatLng();
+
+        @Override
+        public LatLng evaluate(float fraction, LatLng startValue, LatLng endValue) {
+            latLng.setLatitude(startValue.getLatitude()
+                    + ((endValue.getLatitude() - startValue.getLatitude()) * fraction));
+            latLng.setLongitude(startValue.getLongitude()
+                    + ((endValue.getLongitude() - startValue.getLongitude()) * fraction));
+            return latLng;
+        }
     }
 }
