@@ -1,22 +1,31 @@
 package com.caravan.senior_project.caravan_android;
 
+import android.animation.ObjectAnimator;
 import android.animation.TypeEvaluator;
-import android.content.Intent;
+import android.animation.ValueAnimator;
 import android.content.pm.PackageManager;
+import android.graphics.Color;
 import android.location.Location;
 import android.Manifest;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
+import android.support.design.widget.FloatingActionButton;
+import android.support.design.widget.Snackbar;
 import android.support.v4.app.ActivityCompat;
+import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
+import android.support.v7.widget.Toolbar;
 import android.util.Log;
 import android.view.View;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.widget.Button;
+import android.widget.Toast;
 
 import com.mapbox.mapboxsdk.MapboxAccountManager;
+import com.mapbox.mapboxsdk.annotations.Marker;
 import com.mapbox.mapboxsdk.annotations.MarkerOptions;
+import com.mapbox.mapboxsdk.annotations.PolylineOptions;
 import com.mapbox.mapboxsdk.camera.CameraPosition;
 import com.mapbox.mapboxsdk.camera.CameraUpdateFactory;
 import com.mapbox.mapboxsdk.geometry.LatLng;
@@ -25,16 +34,32 @@ import com.mapbox.mapboxsdk.location.LocationServices;
 import com.mapbox.mapboxsdk.maps.MapView;
 import com.mapbox.mapboxsdk.maps.MapboxMap;
 import com.mapbox.mapboxsdk.maps.OnMapReadyCallback;
+import com.mapbox.services.Constants;
 import com.mapbox.services.android.geocoder.ui.GeocoderAutoCompleteView;
+import com.mapbox.services.commons.ServicesException;
+import com.mapbox.services.commons.geojson.LineString;
 import com.mapbox.services.commons.models.Position;
+import com.mapbox.services.directions.v5.DirectionsCriteria;
+import com.mapbox.services.directions.v5.MapboxDirections;
+import com.mapbox.services.directions.v5.models.DirectionsResponse;
+import com.mapbox.services.directions.v5.models.DirectionsRoute;
 import com.mapbox.services.geocoding.v5.GeocodingCriteria;
 import com.mapbox.services.geocoding.v5.models.CarmenFeature;
 
+import java.util.List;
 
-public class MainActivity extends AppCompatActivity {
+import retrofit2.Call;
+import retrofit2.Callback;
+import retrofit2.Response;
+
+public class Directions extends AppCompatActivity {
+
+    private static final String TAG = "DirectionsActivity";
+
     private MapView mapView;
     private MapboxMap map;
     private LocationServices locationServices;
+    private DirectionsRoute currentRoute;
 
     private static final int PERMISSIONS_LOCATION = 0;
 
@@ -42,14 +67,21 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         MapboxAccountManager.start(this, getString(R.string.access_token));
-        setContentView(R.layout.activity_main);
+        setContentView(R.layout.activity_directions);
 
+        final Position origin = Position.fromCoordinates(35.3050053, -120.6624942);
+        final Position destination = Position.fromCoordinates(35.29616057, -120.67146778);
+        locationServices = LocationServices.getLocationServices(Directions.this);
 
-        locationServices = LocationServices.getLocationServices(MainActivity.this);
+        final LatLng centroid = new LatLng(
+                /*
+            (origin.getLatitude() + destination.getLatitude()) / 2,
+                (origin.getLongitude() + destination.getLongitude()) / 2
+                */
+                origin.getLatitude(), origin.getLongitude()
+        );
 
         Button current_location_button = (Button) findViewById(R.id.current_location_button);
-        final Button get_directions = (Button) findViewById(R.id.get_directions_button);
-        //get_directions.setVisibility(View.INVISIBLE);
 
         // Create a mapView
         mapView = (MapView) findViewById(R.id.mapview);
@@ -60,7 +92,25 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onMapReady(MapboxMap mapboxMap) {
                 map = mapboxMap;
+
+                /*
+                mapboxMap.addMarker(new MarkerOptions()
+                .position(new LatLng(origin.getLatitude(), origin.getLongitude()))
+                .title("Origin")
+                .snippet("Cal Poly"));
+                mapboxMap.addMarker(new MarkerOptions()
+                .position(new LatLng(destination.getLatitude(), destination.getLongitude()))
+                .title("Destination")
+                .snippet("Boisen"));
+                /*
+                try {
+                    getRoute(origin, destination);
+                } catch (ServicesException servicesException) {
+                    servicesException.printStackTrace();
+                }
+                */
             }
+
         });
 
         GeocoderAutoCompleteView autocomplete = (GeocoderAutoCompleteView) findViewById(R.id.query);
@@ -71,10 +121,63 @@ public class MainActivity extends AppCompatActivity {
             public void OnFeatureClick(CarmenFeature feature) {
                 Position position = feature.asPosition();
                 updateMap(position.getLatitude(), position.getLongitude());
-                //get_directions.setVisibility(View.VISIBLE);
             }
         });
 
+    }
+
+    private void getRoute(Position origin, Position destination) throws ServicesException {
+
+        MapboxDirections client = new MapboxDirections.Builder()
+                .setOrigin(origin)
+                .setDestination(destination)
+                .setProfile(DirectionsCriteria.PROFILE_CYCLING)
+                .setAccessToken(MapboxAccountManager.getInstance().getAccessToken())
+                .build();
+
+        client.enqueueCall(new Callback<DirectionsResponse>() {
+            @Override
+            public void onResponse(Call<DirectionsResponse> call, Response<DirectionsResponse> response) {
+                Log.d(TAG, "Response code: " + response.code());
+                if (response.body() == null) {
+                    Log.e(TAG, "No routes found, make sure you set the right user");
+                    return;
+                } else if (response.body().getRoutes().size() < 1) {
+                    Log.e(TAG, "No roughts found");
+                    return;
+                }
+
+                currentRoute = response.body().getRoutes().get(0);
+                Log.d(TAG, "Distance: " + currentRoute.getDistance());
+                Toast.makeText(
+                        Directions.this,
+                        "Route is " + currentRoute.getDistance() + " meters long.",
+                        Toast.LENGTH_SHORT).show();
+
+                drawRoute(currentRoute);
+            }
+
+            public void onFailure(Call<DirectionsResponse> call, Throwable throwable) {
+                Log.e(TAG, "Error: " + throwable.getMessage());
+                Toast.makeText(Directions.this, "Error: " + throwable.getMessage(), Toast.LENGTH_SHORT).show();
+            }
+        });
+    }
+
+    private void drawRoute(DirectionsRoute route) {
+        LineString lineString  = LineString.fromPolyline(route.getGeometry(), Constants.OSRM_PRECISION_V5);
+        List<Position> coordinates = lineString.getCoordinates();
+        LatLng[] points = new LatLng[coordinates.size()];
+        for (int i = 0; i < coordinates.size(); i++) {
+            points[i] = new LatLng(
+                    coordinates.get(i).getLatitude(),
+                    coordinates.get(i).getLongitude());
+        }
+
+        map.addPolyline(new PolylineOptions()
+        .add(points)
+        .color(Color.parseColor("#009688"))
+        .width(5));
     }
 
     private void updateMap(double latitude, double longitude) {
@@ -200,12 +303,5 @@ public class MainActivity extends AppCompatActivity {
                 getLocation();
             }
         }
-    }
-
-    public void openDirections(View view) {
-        Log.d("Main", "open_Directions() called.");
-
-        Intent intent = new Intent(this, Directions.class);
-        startActivity(intent);
     }
 }

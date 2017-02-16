@@ -2,4 +2,7 @@
     <string name="app_name">caravan-android</string>
     <string name="action_settings">Settings</string>
     <string name="access_token">pk.eyJ1IjoibmFuY3l0cnVvbmciLCJhIjoiY2l5a254N2kxMDAxdDJxczc3ejRwbHlweSJ9.-zGT-uLt61yIz6hpROnZ5Q</string>
+    <string name="current_location">Current Location</string>
+    <string name="get_directions">Get Directions</string>
+    <string name="title_activity_directions">Directions</string>
 </resources>
