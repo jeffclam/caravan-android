@@ -178,10 +178,10 @@ public class MainActivity extends AppCompatActivity {
         } else {
             // Else, get the last known location.
             Location lastLocation = locationServices.getLastLocation();
-            Log.d("Permission", "Location Permission has been granted already.");
             if (lastLocation != null) {
-                Log.d("LastLocation", "Last Location is not null.");
                 map.moveCamera(CameraUpdateFactory.newLatLngZoom(new LatLng(lastLocation), 16));
+            } else {
+                Log.d("LastLocation", "Last location not set yet.");
                 locationServices.addLocationListener(new LocationListener() {
                     @Override
                     public void onLocationChanged(Location location) {
@@ -193,9 +193,9 @@ public class MainActivity extends AppCompatActivity {
                         }
                     }
                 });
-            } else {
-                Log.d("LastLoction", "Last location not set yet.");
             }
+
+            map.setMyLocationEnabled(true);
             return lastLocation;
         }
         return null;
