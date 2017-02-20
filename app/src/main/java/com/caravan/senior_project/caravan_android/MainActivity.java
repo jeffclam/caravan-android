@@ -1,10 +1,12 @@
 package com.caravan.senior_project.caravan_android;
 
 import android.animation.TypeEvaluator;
+import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.location.Location;
 import android.Manifest;
+import android.location.LocationManager;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
 import android.support.v4.app.ActivityCompat;
@@ -35,6 +37,7 @@ public class MainActivity extends AppCompatActivity {
     private MapView mapView;
     private MapboxMap map;
     private LocationServices locationServices;
+    private Location nextLoc = new Location("dummyProvider");
 
     private static final int PERMISSIONS_LOCATION = 0;
 
@@ -49,7 +52,7 @@ public class MainActivity extends AppCompatActivity {
 
         Button current_location_button = (Button) findViewById(R.id.current_location_button);
         final Button get_directions = (Button) findViewById(R.id.get_directions_button);
-        //get_directions.setVisibility(View.INVISIBLE);
+        get_directions.setVisibility(View.INVISIBLE);
 
         // Create a mapView
         mapView = (MapView) findViewById(R.id.mapview);
@@ -71,7 +74,9 @@ public class MainActivity extends AppCompatActivity {
             public void OnFeatureClick(CarmenFeature feature) {
                 Position position = feature.asPosition();
                 updateMap(position.getLatitude(), position.getLongitude());
-                //get_directions.setVisibility(View.VISIBLE);
+                nextLoc.setLatitude(position.getLatitude());
+                nextLoc.setLongitude(position.getLongitude());
+                get_directions.setVisibility(View.VISIBLE);
             }
         });
 
@@ -163,17 +168,17 @@ public class MainActivity extends AppCompatActivity {
         getLocation();
     }
 
-    private void getLocation() {
+    private Location getLocation() {
         if (!locationServices.areLocationPermissionsGranted()) {
             // If permissions are not granted yet, request them.
             ActivityCompat.requestPermissions(this, new String[]{
                     Manifest.permission.ACCESS_FINE_LOCATION,
                     Manifest.permission.ACCESS_COARSE_LOCATION}, PERMISSIONS_LOCATION);
-            Log.d("LocationNotGranted", "Permission has just been granted");
+            Log.d("Permission", "Location Permission has just been granted");
         } else {
             // Else, get the last known location.
             Location lastLocation = locationServices.getLastLocation();
-            Log.d("PermissionGrantedAlrdy", "Permission has been granted already.");
+            Log.d("Permission", "Location Permission has been granted already.");
             if (lastLocation != null) {
                 Log.d("LastLocation", "Last Location is not null.");
                 map.moveCamera(CameraUpdateFactory.newLatLngZoom(new LatLng(lastLocation), 16));
@@ -188,8 +193,12 @@ public class MainActivity extends AppCompatActivity {
                         }
                     }
                 });
+            } else {
+                Log.d("LastLoction", "Last location not set yet.");
             }
+            return lastLocation;
         }
+        return null;
     }
 
     @Override
@@ -206,6 +215,10 @@ public class MainActivity extends AppCompatActivity {
         Log.d("Main", "open_Directions() called.");
 
         Intent intent = new Intent(this, Directions.class);
+        Bundle locations = new Bundle();
+        locations.putParcelable("currentLoc", getLocation());
+        locations.putParcelable("nextLoc", nextLoc);
+        intent.putExtra("locations", locations);
         startActivity(intent);
     }
 }

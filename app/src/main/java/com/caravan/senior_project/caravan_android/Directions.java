@@ -9,12 +9,8 @@ import android.location.Location;
 import android.Manifest;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
-import android.support.design.widget.FloatingActionButton;
-import android.support.design.widget.Snackbar;
 import android.support.v4.app.ActivityCompat;
-import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
-import android.support.v7.widget.Toolbar;
 import android.util.Log;
 import android.view.View;
 import android.view.Menu;
@@ -69,16 +65,23 @@ public class Directions extends AppCompatActivity {
         MapboxAccountManager.start(this, getString(R.string.access_token));
         setContentView(R.layout.activity_directions);
 
-        final Position origin = Position.fromCoordinates(35.3050053, -120.6624942);
-        final Position destination = Position.fromCoordinates(35.29616057, -120.67146778);
+        Location currentLoc = new Location("dummyProvider");
+        Location destLoc = new Location("dummyProvider");
+        Bundle locations = this.getIntent().getBundleExtra("locations");
+        if (locations != null) {
+            currentLoc = locations.getParcelable("currentLoc");
+            destLoc = locations.getParcelable("nextLoc");
+        }
+
+        final Position origin = Position.fromCoordinates(currentLoc.getLongitude(),
+                                                                    currentLoc.getLatitude());
+        final Position destination = Position.fromCoordinates(destLoc.getLongitude(),
+                                                                    destLoc.getLatitude());
         locationServices = LocationServices.getLocationServices(Directions.this);
 
         final LatLng centroid = new LatLng(
-                /*
             (origin.getLatitude() + destination.getLatitude()) / 2,
                 (origin.getLongitude() + destination.getLongitude()) / 2
-                */
-                origin.getLatitude(), origin.getLongitude()
         );
 
         Button current_location_button = (Button) findViewById(R.id.current_location_button);
@@ -92,8 +95,14 @@ public class Directions extends AppCompatActivity {
             @Override
             public void onMapReady(MapboxMap mapboxMap) {
                 map = mapboxMap;
+                CameraPosition position = new CameraPosition.Builder()
+                        .target(new LatLng(centroid.getLatitude(), centroid.getLongitude()))
+                        .build();
+                Log.d("**Directions camera**", "The camera's position is " + centroid.getLatitude() + ","
+                        + centroid.getLongitude());
+                map.moveCamera(CameraUpdateFactory
+                        .newCameraPosition(position));
 
-                /*
                 mapboxMap.addMarker(new MarkerOptions()
                 .position(new LatLng(origin.getLatitude(), origin.getLongitude()))
                 .title("Origin")
@@ -102,13 +111,13 @@ public class Directions extends AppCompatActivity {
                 .position(new LatLng(destination.getLatitude(), destination.getLongitude()))
                 .title("Destination")
                 .snippet("Boisen"));
-                /*
+
                 try {
                     getRoute(origin, destination);
                 } catch (ServicesException servicesException) {
                     servicesException.printStackTrace();
                 }
-                */
+
             }
 
         });
