@@ -174,26 +174,23 @@ public class MainActivity extends AppCompatActivity {
             ActivityCompat.requestPermissions(this, new String[]{
                     Manifest.permission.ACCESS_FINE_LOCATION,
                     Manifest.permission.ACCESS_COARSE_LOCATION}, PERMISSIONS_LOCATION);
-            Log.d("Permission", "Location Permission has just been granted");
         } else {
             // Else, get the last known location.
             Location lastLocation = locationServices.getLastLocation();
             if (lastLocation != null) {
                 map.moveCamera(CameraUpdateFactory.newLatLngZoom(new LatLng(lastLocation), 16));
-            } else {
-                Log.d("LastLocation", "Last location not set yet.");
-                locationServices.addLocationListener(new LocationListener() {
-                    @Override
-                    public void onLocationChanged(Location location) {
-                        if (location != null) {
-                            Log.d("Location", "There's a new location.");
-                            // Move map to where the user location is.
-                            map.moveCamera(CameraUpdateFactory.newLatLngZoom(new LatLng(location), 16));
-                            locationServices.removeLocationListener(this);
-                        }
-                    }
-                });
             }
+
+            locationServices.addLocationListener(new LocationListener() {
+                @Override
+                public void onLocationChanged(Location location) {
+                    if (location != null) {
+                        // Move map to where the user location is.
+                        map.moveCamera(CameraUpdateFactory.newLatLngZoom(new LatLng(location), 16));
+                        locationServices.removeLocationListener(this);
+                    }
+                }
+            });
 
             map.setMyLocationEnabled(true);
             return lastLocation;
@@ -212,8 +209,6 @@ public class MainActivity extends AppCompatActivity {
     }
 
     public void openDirections(View view) {
-        Log.d("Main", "open_Directions() called.");
-
         Intent intent = new Intent(this, Directions.class);
         Bundle locations = new Bundle();
         locations.putParcelable("currentLoc", getLocation());
