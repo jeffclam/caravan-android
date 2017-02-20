@@ -26,7 +26,7 @@
             </intent-filter>
         </activity>
         <activity
-            android:name=".Directions"
+            android:name=".MapRouteActivity"
             android:label="@string/title_activity_directions"
             android:parentActivityName=".MainActivity"
             android:theme="@style/AppTheme.NoActionBar">
@@ -34,6 +34,10 @@
                 android:name="android.support.PARENT_ACTIVITY"
                 android:value="com.caravan.senior_project.caravan_android.MainActivity" />
         </activity>
+        <activity
+            android:name=".FollowRouteActivity"
+            android:label="@string/title_activity_follow_route"
+            android:theme="@style/AppTheme.NoActionBar"></activity>
     </application>
 
 </manifest>

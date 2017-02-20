@@ -1,12 +1,10 @@
 package com.caravan.senior_project.caravan_android;
 
 import android.animation.TypeEvaluator;
-import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.location.Location;
 import android.Manifest;
-import android.location.LocationManager;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
 import android.support.v4.app.ActivityCompat;
@@ -209,7 +207,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     public void openDirections(View view) {
-        Intent intent = new Intent(this, Directions.class);
+        Intent intent = new Intent(this, MapRouteActivity.class);
         Bundle locations = new Bundle();
         locations.putParcelable("currentLoc", getLocation());
         locations.putParcelable("nextLoc", nextLoc);

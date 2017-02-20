@@ -1,37 +1,31 @@
 package com.caravan.senior_project.caravan_android;
 
-import android.animation.ObjectAnimator;
 import android.animation.TypeEvaluator;
-import android.animation.ValueAnimator;
-import android.content.pm.PackageManager;
+import android.content.Intent;
 import android.graphics.Color;
+import android.graphics.drawable.Drawable;
 import android.location.Location;
-import android.Manifest;
 import android.os.Bundle;
-import android.support.annotation.NonNull;
-import android.support.v4.app.ActivityCompat;
+import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
-import android.view.View;
 import android.view.Menu;
 import android.view.MenuItem;
-import android.widget.Button;
+import android.view.View;
 import android.widget.Toast;
 
 import com.mapbox.mapboxsdk.MapboxAccountManager;
-import com.mapbox.mapboxsdk.annotations.Marker;
+import com.mapbox.mapboxsdk.annotations.Icon;
+import com.mapbox.mapboxsdk.annotations.IconFactory;
 import com.mapbox.mapboxsdk.annotations.MarkerOptions;
 import com.mapbox.mapboxsdk.annotations.PolylineOptions;
 import com.mapbox.mapboxsdk.camera.CameraPosition;
 import com.mapbox.mapboxsdk.camera.CameraUpdateFactory;
 import com.mapbox.mapboxsdk.geometry.LatLng;
-import com.mapbox.mapboxsdk.location.LocationListener;
-import com.mapbox.mapboxsdk.location.LocationServices;
 import com.mapbox.mapboxsdk.maps.MapView;
 import com.mapbox.mapboxsdk.maps.MapboxMap;
 import com.mapbox.mapboxsdk.maps.OnMapReadyCallback;
 import com.mapbox.services.Constants;
-import com.mapbox.services.android.geocoder.ui.GeocoderAutoCompleteView;
 import com.mapbox.services.commons.ServicesException;
 import com.mapbox.services.commons.geojson.LineString;
 import com.mapbox.services.commons.models.Position;
@@ -39,8 +33,6 @@ import com.mapbox.services.directions.v5.DirectionsCriteria;
 import com.mapbox.services.directions.v5.MapboxDirections;
 import com.mapbox.services.directions.v5.models.DirectionsResponse;
 import com.mapbox.services.directions.v5.models.DirectionsRoute;
-import com.mapbox.services.geocoding.v5.GeocodingCriteria;
-import com.mapbox.services.geocoding.v5.models.CarmenFeature;
 
 import java.util.List;
 
@@ -48,16 +40,14 @@ import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
 
-public class Directions extends AppCompatActivity {
+public class MapRouteActivity extends AppCompatActivity {
 
-    private static final String TAG = "DirectionsActivity";
+    private static final String TAG = "MapRouteActivity";
 
     private MapView mapView;
     private MapboxMap map;
-    private LocationServices locationServices;
     private DirectionsRoute currentRoute;
-
-    private static final int PERMISSIONS_LOCATION = 0;
+    private Location nextLoc;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -65,26 +55,32 @@ public class Directions extends AppCompatActivity {
         MapboxAccountManager.start(this, getString(R.string.access_token));
         setContentView(R.layout.activity_directions);
 
-        Location currentLoc = new Location("dummyProvider");
-        Location destLoc = new Location("dummyProvider");
+        // Icon object
+        IconFactory iconFactory = IconFactory.getInstance(MapRouteActivity.this);
+        Drawable iconDrawable = ContextCompat.getDrawable(MapRouteActivity.this,
+                R.drawable.blue_marker);
+        final Icon icon = iconFactory.fromDrawable(iconDrawable);
+
+        // Initialize a start and end from points sent from MainActivity
+        Location start = new Location("dummyProvider");
+        Location finish = new Location("dummyProvider");
         Bundle locations = this.getIntent().getBundleExtra("locations");
         if (locations != null) {
-            currentLoc = locations.getParcelable("currentLoc");
-            destLoc = locations.getParcelable("nextLoc");
+            start = locations.getParcelable("currentLoc");
+            finish = locations.getParcelable("nextLoc");
         }
 
-        final Position origin = Position.fromCoordinates(currentLoc.getLongitude(),
-                                                                    currentLoc.getLatitude());
-        final Position destination = Position.fromCoordinates(destLoc.getLongitude(),
-                                                                    destLoc.getLatitude());
-        locationServices = LocationServices.getLocationServices(Directions.this);
+        nextLoc = finish;
+
+        final Position origin =
+                Position.fromCoordinates(start.getLongitude(), start.getLatitude());
+        final Position destination =
+                Position.fromCoordinates(finish.getLongitude(), finish.getLatitude());
 
         final LatLng centroid = new LatLng(
             (origin.getLatitude() + destination.getLatitude()) / 2,
                 (origin.getLongitude() + destination.getLongitude()) / 2
         );
-
-        Button current_location_button = (Button) findViewById(R.id.current_location_button);
 
         // Create a mapView
         mapView = (MapView) findViewById(R.id.mapview);
@@ -98,19 +94,15 @@ public class Directions extends AppCompatActivity {
                 CameraPosition position = new CameraPosition.Builder()
                         .target(new LatLng(centroid.getLatitude(), centroid.getLongitude()))
                         .build();
-                Log.d("**Directions camera**", "The camera's position is " + centroid.getLatitude() + ","
-                        + centroid.getLongitude());
                 map.moveCamera(CameraUpdateFactory
                         .newCameraPosition(position));
 
                 mapboxMap.addMarker(new MarkerOptions()
                 .position(new LatLng(origin.getLatitude(), origin.getLongitude()))
-                .title("Origin")
-                .snippet("Cal Poly"));
+                .icon(icon));
+
                 mapboxMap.addMarker(new MarkerOptions()
-                .position(new LatLng(destination.getLatitude(), destination.getLongitude()))
-                .title("Destination")
-                .snippet("Boisen"));
+                .position(new LatLng(destination.getLatitude(), destination.getLongitude())));
 
                 try {
                     getRoute(origin, destination);
@@ -121,18 +113,6 @@ public class Directions extends AppCompatActivity {
             }
 
         });
-
-        GeocoderAutoCompleteView autocomplete = (GeocoderAutoCompleteView) findViewById(R.id.query);
-        autocomplete.setAccessToken(MapboxAccountManager.getInstance().getAccessToken());
-        autocomplete.setType(GeocodingCriteria.TYPE_POI);
-        autocomplete.setOnFeatureListener(new GeocoderAutoCompleteView.OnFeatureListener() {
-            @Override
-            public void OnFeatureClick(CarmenFeature feature) {
-                Position position = feature.asPosition();
-                updateMap(position.getLatitude(), position.getLongitude());
-            }
-        });
-
     }
 
     private void getRoute(Position origin, Position destination) throws ServicesException {
@@ -152,14 +132,14 @@ public class Directions extends AppCompatActivity {
                     Log.e(TAG, "No routes found, make sure you set the right user");
                     return;
                 } else if (response.body().getRoutes().size() < 1) {
-                    Log.e(TAG, "No roughts found");
+                    Log.e(TAG, "No routes found");
                     return;
                 }
 
                 currentRoute = response.body().getRoutes().get(0);
                 Log.d(TAG, "Distance: " + currentRoute.getDistance());
                 Toast.makeText(
-                        Directions.this,
+                        MapRouteActivity.this,
                         "Route is " + currentRoute.getDistance() + " meters long.",
                         Toast.LENGTH_SHORT).show();
 
@@ -168,7 +148,7 @@ public class Directions extends AppCompatActivity {
 
             public void onFailure(Call<DirectionsResponse> call, Throwable throwable) {
                 Log.e(TAG, "Error: " + throwable.getMessage());
-                Toast.makeText(Directions.this, "Error: " + throwable.getMessage(), Toast.LENGTH_SHORT).show();
+                Toast.makeText(MapRouteActivity.this, "Error: " + throwable.getMessage(), Toast.LENGTH_SHORT).show();
             }
         });
     }
@@ -187,20 +167,6 @@ public class Directions extends AppCompatActivity {
         .add(points)
         .color(Color.parseColor("#009688"))
         .width(5));
-    }
-
-    private void updateMap(double latitude, double longitude) {
-        // Build marker
-        map.addMarker(new MarkerOptions()
-                .position(new LatLng(latitude, longitude))
-                .title("Geocoder result"));
-
-        // Animate camera to geocoder result location
-        CameraPosition cameraPosition = new CameraPosition.Builder()
-                .target(new LatLng(latitude, longitude))
-                .zoom(15)
-                .build();
-        map.animateCamera(CameraUpdateFactory.newCameraPosition(cameraPosition), 5000, null);
     }
 
     @Override
@@ -255,62 +221,11 @@ public class Directions extends AppCompatActivity {
         mapView.onDestroy();
     }
 
-    private static class LatLngEvaluator implements TypeEvaluator<LatLng> {
-        // Method is used to interpolate the marker animation.
-
-        private LatLng latLng = new LatLng();
-
-        @Override
-        public LatLng evaluate(float fraction, LatLng startValue, LatLng endValue) {
-            latLng.setLatitude(startValue.getLatitude()
-                    + ((endValue.getLatitude() - startValue.getLatitude()) * fraction));
-            latLng.setLongitude(startValue.getLongitude()
-                    + ((endValue.getLongitude() - startValue.getLongitude()) * fraction));
-            return latLng;
-        }
-    }
-
-    public void currentLocation(View view) {
-        Log.d("CurrentLocationButton", "You pressed the button and it's supposed to do something!");
-        getLocation();
-    }
-
-    private void getLocation() {
-        if (!locationServices.areLocationPermissionsGranted()) {
-            // If permissions are not granted yet, request them.
-            ActivityCompat.requestPermissions(this, new String[]{
-                    Manifest.permission.ACCESS_FINE_LOCATION,
-                    Manifest.permission.ACCESS_COARSE_LOCATION}, PERMISSIONS_LOCATION);
-            Log.d("LocationNotGranted", "Permission has just been granted");
-        } else {
-            // Else, get the last known location.
-            Location lastLocation = locationServices.getLastLocation();
-            Log.d("PermissionGrantedAlrdy", "Permission has been granted already.");
-            if (lastLocation != null) {
-                Log.d("LastLocation", "Last Location is not null.");
-                map.moveCamera(CameraUpdateFactory.newLatLngZoom(new LatLng(lastLocation), 16));
-                locationServices.addLocationListener(new LocationListener() {
-                    @Override
-                    public void onLocationChanged(Location location) {
-                        if (location != null) {
-                            Log.d("Location", "There's a new location.");
-                            // Move map to where the user location is.
-                            map.moveCamera(CameraUpdateFactory.newLatLngZoom(new LatLng(location), 16));
-                            locationServices.removeLocationListener(this);
-                        }
-                    }
-                });
-            }
-        }
-    }
-
-    @Override
-    public void onRequestPermissionsResult(
-            int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
-        if (requestCode == PERMISSIONS_LOCATION) {
-            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                getLocation();
-            }
-        }
+    public void startRoute(View view) {
+        Intent intent = new Intent(this, FollowRouteActivity.class);
+        Bundle locations = new Bundle();
+        locations.putParcelable("nextLoc", nextLoc);
+        intent.putExtra("locations", locations);
+        startActivity(intent);
     }
 }
