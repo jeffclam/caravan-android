@@ -10,9 +10,14 @@ import android.support.v4.app.ActivityCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
 import android.util.Log;
+import android.view.Gravity;
+import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
+import android.view.ViewGroup;
+import android.widget.ImageView;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import com.mapbox.mapboxsdk.MapboxAccountManager;
@@ -31,16 +36,23 @@ import com.mapbox.services.Constants;
 import com.mapbox.services.commons.ServicesException;
 import com.mapbox.services.commons.geojson.LineString;
 import com.mapbox.services.commons.models.Position;
+import com.mapbox.services.directions.v4.models.RouteStep;
 import com.mapbox.services.directions.v5.DirectionsCriteria;
 import com.mapbox.services.directions.v5.MapboxDirections;
 import com.mapbox.services.directions.v5.models.DirectionsResponse;
 import com.mapbox.services.directions.v5.models.DirectionsRoute;
+import com.mapbox.services.directions.v5.models.LegStep;
+import com.mapbox.services.directions.v5.models.RouteLeg;
+
+import org.w3c.dom.Text;
 
 import java.util.List;
 
 import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
+
+import static java.sql.Types.NULL;
 
 public class FollowRouteActivity extends AppCompatActivity {
 
@@ -118,7 +130,7 @@ public class FollowRouteActivity extends AppCompatActivity {
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         // Inflate the menu; this adds items to the action bar if it is present.
-        getMenuInflater().inflate(R.menu.menu_main, menu);
+        getMenuInflater().inflate(R.menu.next_direction_follow_route, menu);
         return true;
     }
 
@@ -185,15 +197,44 @@ public class FollowRouteActivity extends AppCompatActivity {
         });
 
         map.setMyLocationEnabled(true);
+
+        if (currentRoute != null) {
+            RouteLeg routeLeg = currentRoute.getLegs().get(0);
+            Log.d(TAG, "Next route distance: " + routeLeg.getDistance());
+            if (routeLeg.getSteps().size() > 0) {
+                LegStep nextStep;
+                if (routeLeg.getSteps().size() > 1)
+                    nextStep = routeLeg.getSteps().get(1);
+                else
+                    nextStep = routeLeg.getSteps().get(0);
+                Log.d(TAG, "Next route leg summary: " + nextStep.getDistance());
+                TextView nextDir = (TextView) findViewById(R.id.Nextdirection);
+                TextView timeRem = (TextView) findViewById(R.id.TimeRemaining);
+                TextView distRem = (TextView) findViewById(R.id.DistanceLeft);
+                ImageView arrow = (ImageView) findViewById(R.id.arrow);
+
+                int timeMin = (int) (currentRoute.getDuration() / 60);
+                double dist = currentRoute.getDistance() / 1609.34;
+                String diststr = String.format("%.1f miles", dist);
+
+                nextDir.setText(nextStep.getManeuver().getInstruction());
+                timeRem.setText(timeMin + " minutes");
+                distRem.setText(diststr);
+                //arrow.setImageResource("@drawable/");
+            } else
+                Log.d(TAG, "Next route leg summary: No step found");
+        }
+
         return lastLocation;
     }
 
     private void getRoute(Position origin, Position destination) throws ServicesException {
 
         MapboxDirections client = new MapboxDirections.Builder()
+                .setSteps(true)
                 .setOrigin(origin)
                 .setDestination(destination)
-                .setProfile(DirectionsCriteria.PROFILE_CYCLING)
+                .setProfile(DirectionsCriteria.PROFILE_DRIVING)
                 .setAccessToken(MapboxAccountManager.getInstance().getAccessToken())
                 .build();
 
@@ -209,14 +250,27 @@ public class FollowRouteActivity extends AppCompatActivity {
                     return;
                 }
 
+                LayoutInflater inflater = getLayoutInflater();
+                View layout = inflater.inflate(R.layout.custom_toast,
+                        (ViewGroup) findViewById(R.id.custom_toast_container));
+
+                TextView text = (TextView) layout.findViewById(R.id.text);
+
                 currentRoute = response.body().getRoutes().get(0);
                 Log.d(TAG, "Distance: " + currentRoute.getDistance());
-                Toast.makeText(
+                /*text.setText("Route is " + currentRoute.getDistance() + " meters long.");
+                Toast toast = new Toast(getApplicationContext());
+                toast.setGravity(Gravity.CENTER_VERTICAL, 0, 0);
+                toast.setDuration(Toast.LENGTH_LONG);
+                toast.setView(layout);
+                toast.show();*/
+                /*Toast.makeText(
                         FollowRouteActivity.this,
                         "Route is " + currentRoute.getDistance() + " meters long.",
                         Toast.LENGTH_SHORT).show();
-
+*/
                 drawRoute(currentRoute);
+
             }
 
             public void onFailure(Call<DirectionsResponse> call, Throwable throwable) {
