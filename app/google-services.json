@@ -8,57 +8,6 @@
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:579421906201:android:da3e7f51a1102cec",
-        "android_client_info": {
-          "package_name": "com.example.rohin.test"
-        }
-      },
-      "oauth_client": [
-        {
-          "client_id": "579421906201-4mgsq1t9sdftl0c1ui8c3t54q3hgebiq.apps.googleusercontent.com",
-          "client_type": 1,
-          "android_info": {
-            "package_name": "com.example.rohin.test",
-            "certificate_hash": "3CE3BDDC7C3303BC1F3BCA6A8E6A303F8CC45508"
-          }
-        },
-        {
-          "client_id": "579421906201-3ldn6im8nj5f5j9da0j5btqhduoagalk.apps.googleusercontent.com",
-          "client_type": 3
-        }
-      ],
-      "api_key": [
-        {
-          "current_key": "AIzaSyBdVhqts21bjvDkWUdYFTIQn-g88F3kfJ4"
-        }
-      ],
-      "services": {
-        "analytics_service": {
-          "status": 1
-        },
-        "appinvite_service": {
-          "status": 2,
-          "other_platform_oauth_client": [
-            {
-              "client_id": "579421906201-8jjsncu4800sqp6fcirpn6r9063ctncb.apps.googleusercontent.com",
-              "client_type": 2,
-              "ios_info": {
-                "bundle_id": "caravan.caravan-ios"
-              }
-            },
-            {
-              "client_id": "579421906201-3ldn6im8nj5f5j9da0j5btqhduoagalk.apps.googleusercontent.com",
-              "client_type": 3
-            }
-          ]
-        },
-        "ads_service": {
-          "status": 2
-        }
-      }
-    },
-    {
-      "client_info": {
         "mobilesdk_app_id": "1:579421906201:android:d95f63d226b75306",
         "android_client_info": {
           "package_name": "com.caravan.senior_project.caravan_android"
@@ -66,11 +15,19 @@
       },
       "oauth_client": [
         {
+          "client_id": "579421906201-7dvlunp8ehoj1ou71042p53hp1f5nhg5.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.caravan.senior_project.caravan_android",
+            "certificate_hash": "4879dab5d3a43462c9ca8cf7fcb4397b3eeca36d"
+          }
+        },
+        {
           "client_id": "579421906201-ck4ndc0o298pl0omqrbqk2t12u0lbnvu.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {
             "package_name": "com.caravan.senior_project.caravan_android",
-            "certificate_hash": "3CE3BDDC7C3303BC1F3BCA6A8E6A303F8CC45508"
+            "certificate_hash": "3ce3bddc7c3303bc1f3bca6a8e6a303f8cc45508"
           }
         },
         {
@@ -91,15 +48,15 @@
           "status": 2,
           "other_platform_oauth_client": [
             {
+              "client_id": "579421906201-3ldn6im8nj5f5j9da0j5btqhduoagalk.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
               "client_id": "579421906201-8jjsncu4800sqp6fcirpn6r9063ctncb.apps.googleusercontent.com",
               "client_type": 2,
               "ios_info": {
                 "bundle_id": "caravan.caravan-ios"
               }
-            },
-            {
-              "client_id": "579421906201-3ldn6im8nj5f5j9da0j5btqhduoagalk.apps.googleusercontent.com",
-              "client_type": 3
             }
           ]
         },
