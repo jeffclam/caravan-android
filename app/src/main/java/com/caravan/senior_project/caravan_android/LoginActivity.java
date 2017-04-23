@@ -3,6 +3,7 @@ package com.caravan.senior_project.caravan_android;
 import android.animation.Animator;
 import android.animation.AnimatorListenerAdapter;
 import android.annotation.TargetApi;
+import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.support.annotation.NonNull;
 import android.support.design.widget.Snackbar;
@@ -265,6 +266,10 @@ public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<
                                 mEmailView.setText(R.string.auth_failed);
                             }
 
+                            if (task.isSuccessful()) {
+                                launchMain();
+                            }
+
                             showProgress(false);
                         }
                     });
@@ -371,6 +376,12 @@ public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<
 
         int ADDRESS = 0;
         int IS_PRIMARY = 1;
+    }
+
+    private void launchMain(){
+        Intent intent = new Intent(this, MainActivity.class);
+        startActivity(intent);
+        this.finish();
     }
 }
 

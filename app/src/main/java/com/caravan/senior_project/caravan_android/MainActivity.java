@@ -15,6 +15,8 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.widget.Button;
 
+import com.google.firebase.database.DatabaseReference;
+import com.google.firebase.database.FirebaseDatabase;
 import com.mapbox.mapboxsdk.MapboxAccountManager;
 import com.mapbox.mapboxsdk.annotations.MarkerOptions;
 import com.mapbox.mapboxsdk.camera.CameraPosition;
@@ -32,10 +34,14 @@ import com.mapbox.services.geocoding.v5.models.CarmenFeature;
 
 
 public class MainActivity extends AppCompatActivity {
+    FirebaseDatabase database = FirebaseDatabase.getInstance();
+    DatabaseReference dbRef = database.getReference();
+
     private MapView mapView;
     private MapboxMap map;
     private LocationServices locationServices;
     private Location nextLoc = new Location("dummyProvider");
+    private User user = new User("jeff", "jeff@jeff.com");
 
     private static final int PERMISSIONS_LOCATION = 0;
 
@@ -191,6 +197,11 @@ public class MainActivity extends AppCompatActivity {
             });
 
             map.setMyLocationEnabled(true);
+            if (lastLocation != null) {
+                user.setCoords(lastLocation.getLatitude(), lastLocation.getLongitude());
+                Log.d("USERCOORD", "User coords are " + user.coord.latitude + ", " + user.coord.longitude);
+                dbRef.child("users").child("username").setValue(user.username);
+            }
             return lastLocation;
         }
         return null;

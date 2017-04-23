@@ -60,4 +60,7 @@ dependencies {
 dependencies {
     compile 'com.google.firebase:firebase-auth:10.0.1'
 }
+dependencies {
+    compile 'com.google.firebase:firebase-database:10.0.1'
+}
 apply plugin: 'com.google.gms.google-services'
