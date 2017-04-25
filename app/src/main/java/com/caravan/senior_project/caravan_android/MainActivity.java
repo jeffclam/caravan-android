@@ -15,6 +15,8 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.widget.Button;
 
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 import com.mapbox.mapboxsdk.MapboxAccountManager;
@@ -34,6 +36,10 @@ import com.mapbox.services.geocoding.v5.models.CarmenFeature;
 
 
 public class MainActivity extends AppCompatActivity {
+
+    public static String TAG = "MainActivity";
+    private FirebaseAuth mAuth;
+    private FirebaseAuth.AuthStateListener mAuthListener;
     FirebaseDatabase database = FirebaseDatabase.getInstance();
     DatabaseReference dbRef = database.getReference();
 
@@ -51,6 +57,21 @@ public class MainActivity extends AppCompatActivity {
         MapboxAccountManager.start(this, getString(R.string.access_token));
         setContentView(R.layout.activity_main);
 
+        mAuth = FirebaseAuth.getInstance();
+        mAuthListener = new FirebaseAuth.AuthStateListener() {
+            @Override
+            public void onAuthStateChanged(@NonNull FirebaseAuth firebaseAuth) {
+                FirebaseUser user = firebaseAuth.getCurrentUser();
+                if (user != null) {
+                    //user is signed in
+                    Log.d(TAG, "onAuthStateChanged:signed_in" + user.getUid());
+                } else {
+                    //user not signed in
+                    Log.d(TAG, "onAuthStateChanged:signed_out");
+                    logOut();
+                }
+            }
+        };
 
         locationServices = LocationServices.getLocationServices(MainActivity.this);
 
@@ -198,9 +219,18 @@ public class MainActivity extends AppCompatActivity {
 
             map.setMyLocationEnabled(true);
             if (lastLocation != null) {
-                user.setCoords(lastLocation.getLatitude(), lastLocation.getLongitude());
-                Log.d("USERCOORD", "User coords are " + user.coord.latitude + ", " + user.coord.longitude);
-                dbRef.child("users").child("username").setValue(user.username);
+                FirebaseUser fb_user = mAuth.getCurrentUser();
+                if (fb_user != null) {
+                    Log.v(TAG, "Uid: " + fb_user.getUid());
+                    user.setCoords(lastLocation.getLatitude(), lastLocation.getLongitude());
+                    dbRef.child("users").child(fb_user.getUid()).child("user").setValue(fb_user.getEmail());
+                    dbRef.child("users").child(fb_user.getUid()).child("coord").child("latitude")
+                        .setValue(user.coord.latitude);
+                    Log.v(TAG, "user latitude set");
+                    dbRef.child("users").child(fb_user.getUid()).child("coord").child("longitude")
+                        .setValue(user.coord.longitude);
+                    Log.v(TAG, "user longitude set");
+                }
             }
             return lastLocation;
         }
@@ -224,5 +254,11 @@ public class MainActivity extends AppCompatActivity {
         locations.putParcelable("nextLoc", nextLoc);
         intent.putExtra("locations", locations);
         startActivity(intent);
+    }
+
+    public void logOut() {
+        Intent intent = new Intent(this, LoginActivity.class);
+        startActivity(intent);
+        this.finish();
     }
 }
