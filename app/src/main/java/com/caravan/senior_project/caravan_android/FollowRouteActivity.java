@@ -243,6 +243,9 @@ public class FollowRouteActivity extends AppCompatActivity {
                     return;
                 }
 
+                currentRoute = response.body().getRoutes().get(0);
+                Log.d(TAG, "Distance: " + currentRoute.getDistance());
+
                 /*text.setText("Route is " + currentRoute.getDistance() + " meters long.");
                 Toast toast = new Toast(getApplicationContext());
                 toast.setGravity(Gravity.CENTER_VERTICAL, 0, 0);
