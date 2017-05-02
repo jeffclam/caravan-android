@@ -5,14 +5,14 @@ package com.caravan.senior_project.caravan_android;
  */
 
 public class User {
-    public class Coord {
-        double latitude;
-        double longitude;
-    }
 
     public String username;
     public String email;
     public Coord coord ;
+
+    public User() {
+        //empty constructor
+    }
 
     public User(String username, String email) {
         this.username = username;
@@ -23,5 +23,17 @@ public class User {
     public void setCoords(double lat, double lon) {
         coord.latitude = lat;
         coord.longitude = lon;
+    }
+
+    public String getUsername() {
+        return username;
+    }
+
+    public String getEmail() {
+        return email;
+    }
+
+    public Coord getCoord() {
+        return coord;
     }
 }

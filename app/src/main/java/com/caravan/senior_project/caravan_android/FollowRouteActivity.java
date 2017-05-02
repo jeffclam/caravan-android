@@ -20,6 +20,11 @@ import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.google.firebase.database.DataSnapshot;
+import com.google.firebase.database.DatabaseError;
+import com.google.firebase.database.DatabaseReference;
+import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.database.ValueEventListener;
 import com.mapbox.mapboxsdk.MapboxAccountManager;
 import com.mapbox.mapboxsdk.annotations.MarkerOptions;
 import com.mapbox.mapboxsdk.annotations.Polyline;
@@ -63,6 +68,7 @@ public class FollowRouteActivity extends AppCompatActivity {
     private DirectionsRoute currentRoute;
     private Polyline drawnRoute = null;
     private LocationServices locationServices;
+    private DatabaseReference otherUserRef;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {

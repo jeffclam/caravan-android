@@ -3,11 +3,13 @@ package com.caravan.senior_project.caravan_android;
 import android.animation.TypeEvaluator;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.graphics.drawable.Drawable;
 import android.location.Location;
 import android.Manifest;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
 import android.support.v4.app.ActivityCompat;
+import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.view.View;
@@ -17,10 +19,16 @@ import android.widget.Button;
 
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
+import com.google.firebase.database.DataSnapshot;
+import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.database.ValueEventListener;
 import com.mapbox.mapboxsdk.MapboxAccountManager;
+import com.mapbox.mapboxsdk.annotations.Icon;
+import com.mapbox.mapboxsdk.annotations.IconFactory;
 import com.mapbox.mapboxsdk.annotations.MarkerOptions;
+import com.mapbox.mapboxsdk.annotations.MarkerViewOptions;
 import com.mapbox.mapboxsdk.camera.CameraPosition;
 import com.mapbox.mapboxsdk.camera.CameraUpdateFactory;
 import com.mapbox.mapboxsdk.geometry.LatLng;
@@ -42,12 +50,14 @@ public class MainActivity extends AppCompatActivity {
     private FirebaseAuth.AuthStateListener mAuthListener;
     FirebaseDatabase database = FirebaseDatabase.getInstance();
     DatabaseReference dbRef = database.getReference();
+    DatabaseReference otherUserRef;
 
     private MapView mapView;
     private MapboxMap map;
     private LocationServices locationServices;
     private Location nextLoc = new Location("dummyProvider");
     private User user = new User("jeff", "jeff@jeff.com");
+    private Coord friendCoord;
 
     private static final int PERMISSIONS_LOCATION = 0;
 
@@ -56,6 +66,12 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         MapboxAccountManager.start(this, getString(R.string.access_token));
         setContentView(R.layout.activity_main);
+
+        // Icon object
+        IconFactory iconFactory = IconFactory.getInstance(MainActivity.this);
+        Drawable iconDrawable = ContextCompat.getDrawable(MainActivity.this,
+                R.drawable.blue_marker);
+        final Icon icon = iconFactory.fromDrawable(iconDrawable);
 
         mAuth = FirebaseAuth.getInstance();
         mAuthListener = new FirebaseAuth.AuthStateListener() {
@@ -104,6 +120,33 @@ public class MainActivity extends AppCompatActivity {
                 get_directions.setVisibility(View.VISIBLE);
             }
         });
+
+
+        otherUserRef = FirebaseDatabase.getInstance().getReference()
+                .child("users").child("BKGE9xrtP5V6QwWYirRF3Rxpkdv2")
+                .child("coord");
+        Log.d(TAG, "DBRef Found: " + otherUserRef.toString());
+
+        ValueEventListener otherLocation = new ValueEventListener() {
+            @Override
+            public void onDataChange(DataSnapshot dataSnapshot) {
+                friendCoord = dataSnapshot.getValue(Coord.class);
+                if (dataSnapshot.exists()) {
+                    Log.v(TAG, "Other Coords: " + friendCoord.getLatitude() + ", " + friendCoord.getLongitude());
+                    map.addMarker(new MarkerViewOptions()
+                        .position(new LatLng(friendCoord.getLatitude(), friendCoord.getLongitude()))
+                        .icon(icon));
+                }
+            }
+
+            @Override
+            public void onCancelled(DatabaseError databaseError) {
+                Log.w(TAG, "Load failed: ", databaseError.toException());
+            }
+        };
+        Log.v(TAG, "Value Event Listener: ");
+        otherUserRef.addValueEventListener(otherLocation);
+        Log.v(TAG, "Success");
 
     }
 
@@ -224,12 +267,9 @@ public class MainActivity extends AppCompatActivity {
                     Log.v(TAG, "Uid: " + fb_user.getUid());
                     user.setCoords(lastLocation.getLatitude(), lastLocation.getLongitude());
                     dbRef.child("users").child(fb_user.getUid()).child("user").setValue(fb_user.getEmail());
-                    dbRef.child("users").child(fb_user.getUid()).child("coord").child("latitude")
-                        .setValue(user.coord.latitude);
-                    Log.v(TAG, "user latitude set");
-                    dbRef.child("users").child(fb_user.getUid()).child("coord").child("longitude")
-                        .setValue(user.coord.longitude);
-                    Log.v(TAG, "user longitude set");
+                    dbRef.child("users").child(fb_user.getUid()).child("coord").setValue(user.coord);
+                    Log.v(TAG, "Coord set: " + user.coord.toString());
+                    dbRef.child("users").child(fb_user.getUid()).child("user").setValue(user);
                 }
             }
             return lastLocation;
