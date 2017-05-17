@@ -14,30 +14,30 @@
         android:layout_height="match_parent"
         tools:context=".MainActivity">
 
-    <com.mapbox.mapboxsdk.maps.MapView
-        android:id="@+id/mapview"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        mapbox:center_latitude="38.897"
-        mapbox:center_longitude="-77.036"
-        mapbox:style_url="@string/style_mapbox_streets"
-        mapbox:tilt="20"
-        mapbox:zoom="12" />
+        <com.mapbox.mapboxsdk.maps.MapView
+            android:id="@+id/mapview"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            mapbox:mapbox_cameraTargetLat="38.897"
+            mapbox:mapbox_cameraTargetLng="-77.036"
+            mapbox:mapbox_styleUrl="@string/mapbox_style_mapbox_streets"
+            mapbox:mapbox_cameraTilt="20"
+            mapbox:mapbox_cameraZoom="12" />
 
-    <Button
-        android:id="@+id/start_route"
-        android:layout_height="wrap_content"
-        android:layout_width="wrap_content"
-        android:text="@string/start_route"
-        android:onClick="startRoute" />
+        <Button
+            android:id="@+id/start_route"
+            android:layout_height="wrap_content"
+            android:layout_width="wrap_content"
+            android:text="@string/start_route"
+            android:onClick="startRoute" />
 
-    <Button
-        android:id="@+id/current_location_button"
-        android:layout_height="wrap_content"
-        android:layout_width="wrap_content"
-        android:text="@string/current_location"
-        android:onClick="currentLocation"
-        android:layout_alignRight="@+id/mapview" />
+        <Button
+            android:id="@+id/current_location_button"
+            android:layout_height="wrap_content"
+            android:layout_width="wrap_content"
+            android:text="@string/current_location"
+            android:onClick="currentLocation"
+            android:layout_alignRight="@+id/mapview" />
 
     </RelativeLayout>
 

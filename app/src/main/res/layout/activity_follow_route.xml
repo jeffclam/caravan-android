@@ -23,11 +23,11 @@
                 android:id="@+id/mapview"
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
-                mapbox:center_latitude="38.897"
-                mapbox:center_longitude="-77.036"
-                mapbox:style_url="@string/style_mapbox_streets"
-                mapbox:tilt="20"
-                mapbox:zoom="12" >
+                mapbox:mapbox_cameraTargetLat="38.897"
+                mapbox:mapbox_cameraTargetLng="-77.036"
+                mapbox:mapbox_styleUrl="@string/mapbox_style_mapbox_streets"
+                mapbox:mapbox_cameraTilt="20"
+                mapbox:mapbox_cameraZoom="12" />
 
                 <LinearLayout
                     android:layout_width="341dp"
@@ -35,7 +35,7 @@
                     android:orientation="horizontal"
                     android:layout_gravity="center_horizontal"
                     android:paddingTop="20dp"
-                    android:background="@color/white">
+                    android:background="@color/colorPrimary">
                     <ImageView
                         android:id="@+id/arrow"
                         android:layout_width="50dp"
@@ -44,7 +44,7 @@
                         android:layout_marginLeft="5dp"
                         android:layout_marginRight="5dp"
                         android:layout_marginTop="5dp"
-                        android:src="@drawable/ic_directions_bike_black_24dp" />
+                        android:src="@drawable/blue_marker"/>
                     <TextView
                         android:id="@+id/Nextdirection"
                         android:layout_width="wrap_content"
@@ -60,7 +60,7 @@
                     android:orientation="horizontal"
                     android:layout_gravity="bottom"
                     android:paddingTop="20dp"
-                    android:background="@color/white">
+                    android:background="@color/colorPrimary">
                     <TextView
                         android:id="@+id/TimeRemaining"
                         android:layout_width="200dp"
@@ -80,11 +80,7 @@
                         android:paddingTop="5dp"
                         android:text="Loading Distance Remaining..."/>
                 </LinearLayout>
-            </com.mapbox.mapboxsdk.maps.MapView>
-
         </RelativeLayout>
-
     </FrameLayout>
-
 </android.support.design.widget.CoordinatorLayout>
 

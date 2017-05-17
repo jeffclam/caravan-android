@@ -6,7 +6,6 @@ package com.caravan.senior_project.caravan_android;
 
 public class User {
 
-    public String username;
     public String email;
     public Coord coord ;
 
@@ -14,8 +13,7 @@ public class User {
         //empty constructor
     }
 
-    public User(String username, String email) {
-        this.username = username;
+    public User(String email) {
         this.email = email;
         coord = new Coord();
     }
@@ -23,10 +21,6 @@ public class User {
     public void setCoords(double lat, double lon) {
         coord.latitude = lat;
         coord.longitude = lon;
-    }
-
-    public String getUsername() {
-        return username;
     }
 
     public String getEmail() {

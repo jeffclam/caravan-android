@@ -25,29 +25,29 @@ import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.ValueEventListener;
-import com.mapbox.mapboxsdk.MapboxAccountManager;
+import com.mapbox.mapboxsdk.Mapbox;
 import com.mapbox.mapboxsdk.annotations.MarkerOptions;
 import com.mapbox.mapboxsdk.annotations.Polyline;
 import com.mapbox.mapboxsdk.annotations.PolylineOptions;
 import com.mapbox.mapboxsdk.camera.CameraPosition;
 import com.mapbox.mapboxsdk.camera.CameraUpdateFactory;
 import com.mapbox.mapboxsdk.geometry.LatLng;
-import com.mapbox.mapboxsdk.location.LocationListener;
-import com.mapbox.mapboxsdk.location.LocationServices;
+import com.mapbox.mapboxsdk.location.LocationSource;
 import com.mapbox.mapboxsdk.maps.MapView;
 import com.mapbox.mapboxsdk.maps.MapboxMap;
 import com.mapbox.mapboxsdk.maps.OnMapReadyCallback;
 import com.mapbox.services.Constants;
-import com.mapbox.services.commons.ServicesException;
+import com.mapbox.services.android.telemetry.location.LocationEngine;
+import com.mapbox.services.android.telemetry.location.LocationEngineListener;
+import com.mapbox.services.api.ServicesException;
 import com.mapbox.services.commons.geojson.LineString;
 import com.mapbox.services.commons.models.Position;
-import com.mapbox.services.directions.v4.models.RouteStep;
-import com.mapbox.services.directions.v5.DirectionsCriteria;
-import com.mapbox.services.directions.v5.MapboxDirections;
-import com.mapbox.services.directions.v5.models.DirectionsResponse;
-import com.mapbox.services.directions.v5.models.DirectionsRoute;
-import com.mapbox.services.directions.v5.models.LegStep;
-import com.mapbox.services.directions.v5.models.RouteLeg;
+import com.mapbox.services.api.directions.v5.DirectionsCriteria;
+import com.mapbox.services.api.directions.v5.MapboxDirections;
+import com.mapbox.services.api.directions.v5.models.DirectionsResponse;
+import com.mapbox.services.api.directions.v5.models.DirectionsRoute;
+import com.mapbox.services.api.directions.v5.models.LegStep;
+import com.mapbox.services.api.directions.v5.models.RouteLeg;
 
 import org.w3c.dom.Text;
 
@@ -67,16 +67,18 @@ public class FollowRouteActivity extends AppCompatActivity {
     private MapboxMap map;
     private DirectionsRoute currentRoute;
     private Polyline drawnRoute = null;
-    private LocationServices locationServices;
+    private LocationEngine locationEngine;
+    private LocationEngineListener locationEngineListener;
     private DatabaseReference otherUserRef;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_follow_route);
-        MapboxAccountManager.start(this, getString(R.string.access_token));
+        Mapbox.getInstance(this, getString(R.string.access_token));
 
-        locationServices = LocationServices.getLocationServices(FollowRouteActivity.this);
+        locationEngine = LocationSource.getLocationEngine(this);
+        locationEngine.activate();
 
         // Grab destination from previous activity
         Location finish = new Location("dummyProvider");
@@ -104,15 +106,25 @@ public class FollowRouteActivity extends AppCompatActivity {
             }
         });
 
-        locationServices.addLocationListener(new LocationListener() {
+        /* Updates map to where the user is once the location changes */
+        locationEngineListener = new LocationEngineListener() {
+            @Override
+            public void onConnected() {
+                // No action needed
+            }
+
             @Override
             public void onLocationChanged(Location location) {
                 if (location != null) {
                     // Move map to where the user location is.
                     updateMap(getLocation().getLatitude(), getLocation().getLongitude(), destination);
+                    /* Might or might not need this?
+                    // Removes listener so it's not constantly updating
+                    locationEngine.removeLocationEngineListener(this);
+                    */
                 }
             }
-        });
+        };
     }
 
     private void updateMap(double latitude, double longitude, Position destination) {
@@ -133,67 +145,27 @@ public class FollowRouteActivity extends AppCompatActivity {
         }
     }
 
-    @Override
-    public boolean onOptionsItemSelected(MenuItem item) {
-        // Handle action bar item clicks here. The action bar will
-        // automatically handle clicks on the Home/Up button, so long
-        // as you specify a parent activity in AndroidManifest.xml.
-        int id = item.getItemId();
-
-        //noinspection SimplifiableIfStatement
-        if (id == R.id.action_settings) {
-            return true;
-        }
-
-        return super.onOptionsItemSelected(item);
-    }
-
-    @Override
-    public void onResume() {
-        super.onResume();
-        mapView.onResume();
-    }
-
-    @Override
-    public void onPause() {
-        super.onPause();
-        mapView.onPause();
-    }
-
-    @Override
-    public void onSaveInstanceState(Bundle outState) {
-        super.onSaveInstanceState(outState);
-        mapView.onSaveInstanceState(outState);
-    }
-
-    @Override
-    public void onLowMemory() {
-        super.onLowMemory();
-        mapView.onLowMemory();
-    }
-
-    @Override
-    protected void onDestroy() {
-        super.onDestroy();
-        mapView.onDestroy();
-    }
-
-    private Location getLocation() {
-        Location lastLocation = locationServices.getLastLocation();
+    private Location getLocation() throws SecurityException{
+        Location lastLocation = locationEngine.getLastLocation();
         if (lastLocation != null) {
             map.moveCamera(CameraUpdateFactory.newLatLngZoom(new LatLng(lastLocation), 16));
         }
 
-        locationServices.addLocationListener(new LocationListener() {
+        locationEngineListener = new LocationEngineListener() {
+            @Override
+            public void onConnected() {
+                // No action needed
+            }
+
             @Override
             public void onLocationChanged(Location location) {
                 if (location != null) {
                     // Move map to where the user location is.
                     map.moveCamera(CameraUpdateFactory.newLatLngZoom(new LatLng(location), 16));
-                    locationServices.removeLocationListener(this);
+                    locationEngine.removeLocationEngineListener(this);
                 }
             }
-        });
+        };
 
         map.setMyLocationEnabled(true);
 
@@ -234,7 +206,7 @@ public class FollowRouteActivity extends AppCompatActivity {
                 .setOrigin(origin)
                 .setDestination(destination)
                 .setProfile(DirectionsCriteria.PROFILE_DRIVING)
-                .setAccessToken(MapboxAccountManager.getInstance().getAccessToken())
+                .setAccessToken(Mapbox.getAccessToken())
                 .build();
 
         client.enqueueCall(new Callback<DirectionsResponse>() {
@@ -291,5 +263,56 @@ public class FollowRouteActivity extends AppCompatActivity {
                 .add(points)
                 .color(Color.parseColor("#009688"))
                 .width(5));
+    }
+    
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        // Handle action bar item clicks here. The action bar will
+        // automatically handle clicks on the Home/Up button, so long
+        // as you specify a parent activity in AndroidManifest.xml.
+        int id = item.getItemId();
+
+        //noinspection SimplifiableIfStatement
+        if (id == R.id.action_settings) {
+            return true;
+        }
+
+        return super.onOptionsItemSelected(item);
+    }
+
+    @Override
+    public void onStart() {
+        super.onStart();
+        mapView.onStart();
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+        mapView.onResume();
+    }
+
+    @Override
+    public void onPause() {
+        super.onPause();
+        mapView.onPause();
+    }
+
+    @Override
+    public void onSaveInstanceState(Bundle outState) {
+        super.onSaveInstanceState(outState);
+        mapView.onSaveInstanceState(outState);
+    }
+
+    @Override
+    public void onLowMemory() {
+        super.onLowMemory();
+        mapView.onLowMemory();
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        mapView.onDestroy();
     }
 }
