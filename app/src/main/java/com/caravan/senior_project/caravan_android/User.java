@@ -7,18 +7,16 @@ import com.mapbox.services.directions.v5.models.DirectionsRoute;
  */
 
 public class User {
-    public class Coord {
-        double latitude;
-        double longitude;
-    }
 
-    public String username;
     public String email;
     public Coord coord ;
     public DirectionsRoute route;
 
-    public User(String username, String email) {
-        this.username = username;
+    public User() {
+        //empty constructor
+    }
+
+    public User(String email) {
         this.email = email;
         coord = new Coord();
     }
@@ -28,7 +26,11 @@ public class User {
         coord.longitude = lon;
     }
 
-    public void setRoute(DirectionsRoute r) {
-        route = r;
+    public String getEmail() {
+        return email;
+    }
+
+    public Coord getCoord() {
+        return coord;
     }
 }

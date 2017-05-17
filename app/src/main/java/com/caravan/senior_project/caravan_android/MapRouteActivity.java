@@ -1,6 +1,5 @@
 package com.caravan.senior_project.caravan_android;
 
-import android.animation.TypeEvaluator;
 import android.content.Intent;
 import android.graphics.Color;
 import android.graphics.drawable.Drawable;
@@ -14,7 +13,7 @@ import android.view.MenuItem;
 import android.view.View;
 import android.widget.Toast;
 
-import com.mapbox.mapboxsdk.MapboxAccountManager;
+import com.mapbox.mapboxsdk.Mapbox;
 import com.mapbox.mapboxsdk.annotations.Icon;
 import com.mapbox.mapboxsdk.annotations.IconFactory;
 import com.mapbox.mapboxsdk.annotations.MarkerOptions;
@@ -26,13 +25,13 @@ import com.mapbox.mapboxsdk.maps.MapView;
 import com.mapbox.mapboxsdk.maps.MapboxMap;
 import com.mapbox.mapboxsdk.maps.OnMapReadyCallback;
 import com.mapbox.services.Constants;
-import com.mapbox.services.commons.ServicesException;
+import com.mapbox.services.api.ServicesException;
 import com.mapbox.services.commons.geojson.LineString;
 import com.mapbox.services.commons.models.Position;
-import com.mapbox.services.directions.v5.DirectionsCriteria;
-import com.mapbox.services.directions.v5.MapboxDirections;
-import com.mapbox.services.directions.v5.models.DirectionsResponse;
-import com.mapbox.services.directions.v5.models.DirectionsRoute;
+import com.mapbox.services.api.directions.v5.DirectionsCriteria;
+import com.mapbox.services.api.directions.v5.MapboxDirections;
+import com.mapbox.services.api.directions.v5.models.DirectionsResponse;
+import com.mapbox.services.api.directions.v5.models.DirectionsRoute;
 
 import java.util.List;
 
@@ -52,14 +51,14 @@ public class MapRouteActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        MapboxAccountManager.start(this, getString(R.string.access_token));
+
+        Mapbox.getInstance(this, getString(R.string.access_token));
+
         setContentView(R.layout.activity_directions);
 
-        // Icon object
+        // Icon object for custom marker image
         IconFactory iconFactory = IconFactory.getInstance(MapRouteActivity.this);
-        Drawable iconDrawable = ContextCompat.getDrawable(MapRouteActivity.this,
-                R.drawable.blue_marker);
-        final Icon icon = iconFactory.fromDrawable(iconDrawable);
+        final Icon icon = iconFactory.fromResource(R.drawable.blue_marker);
 
         // Initialize a start and end from points sent from MainActivity
         Location start = new Location("dummyProvider");
@@ -77,6 +76,7 @@ public class MapRouteActivity extends AppCompatActivity {
         final Position destination =
                 Position.fromCoordinates(finish.getLongitude(), finish.getLatitude());
 
+        /* Midpoint between origin and destination */
         final LatLng centroid = new LatLng(
             (origin.getLatitude() + destination.getLatitude()) / 2,
                 (origin.getLongitude() + destination.getLongitude()) / 2
@@ -91,16 +91,20 @@ public class MapRouteActivity extends AppCompatActivity {
             @Override
             public void onMapReady(MapboxMap mapboxMap) {
                 map = mapboxMap;
+                
+                /* Set the camera's position to middle of origin and destination */
                 CameraPosition position = new CameraPosition.Builder()
                         .target(new LatLng(centroid.getLatitude(), centroid.getLongitude()))
                         .build();
                 map.moveCamera(CameraUpdateFactory
                         .newCameraPosition(position));
-
+                        
+                /* Set a marker at the starting location */
                 mapboxMap.addMarker(new MarkerOptions()
                 .position(new LatLng(origin.getLatitude(), origin.getLongitude()))
                 .icon(icon));
 
+                /* Set a marker at the destination location */
                 mapboxMap.addMarker(new MarkerOptions()
                 .position(new LatLng(destination.getLatitude(), destination.getLongitude())));
 
@@ -116,14 +120,15 @@ public class MapRouteActivity extends AppCompatActivity {
     }
 
     private void getRoute(Position origin, Position destination) throws ServicesException {
-
+        /* Call Mapbox Client instance */
         MapboxDirections client = new MapboxDirections.Builder()
                 .setOrigin(origin)
                 .setDestination(destination)
-                .setProfile(DirectionsCriteria.PROFILE_CYCLING)
-                .setAccessToken(MapboxAccountManager.getInstance().getAccessToken())
+                .setProfile(DirectionsCriteria.PROFILE_DRIVING)
+                .setAccessToken(Mapbox.getAccessToken())
                 .build();
 
+        /* Call for a route that goes from origin to destination */
         client.enqueueCall(new Callback<DirectionsResponse>() {
             @Override
             public void onResponse(Call<DirectionsResponse> call, Response<DirectionsResponse> response) {
@@ -135,14 +140,14 @@ public class MapRouteActivity extends AppCompatActivity {
                     Log.e(TAG, "No routes found");
                     return;
                 }
-
+                
+                /* Get the first route available and draw it if exists */
                 currentRoute = response.body().getRoutes().get(0);
                 Log.d(TAG, "Distance: " + currentRoute.getDistance());
                 Toast.makeText(
                         MapRouteActivity.this,
                         "Route is " + currentRoute.getDistance() + " meters long.",
                         Toast.LENGTH_SHORT).show();
-
                 drawRoute(currentRoute);
             }
 
@@ -153,20 +158,33 @@ public class MapRouteActivity extends AppCompatActivity {
         });
     }
 
+    /* Call MapBox commands to draw a route onto the map */
     private void drawRoute(DirectionsRoute route) {
         LineString lineString  = LineString.fromPolyline(route.getGeometry(), Constants.OSRM_PRECISION_V5);
         List<Position> coordinates = lineString.getCoordinates();
         LatLng[] points = new LatLng[coordinates.size()];
+        
+        /* Add each coordinate points to a Coordinates array */
         for (int i = 0; i < coordinates.size(); i++) {
             points[i] = new LatLng(
                     coordinates.get(i).getLatitude(),
                     coordinates.get(i).getLongitude());
         }
-
+        
+        /* Draw the lines */
         map.addPolyline(new PolylineOptions()
         .add(points)
         .color(Color.parseColor("#009688"))
         .width(5));
+    }
+    
+     /* Start route, send location information to the next activity */
+     public void startRoute(View view) {
+        Intent intent = new Intent(this, FollowRouteActivity.class);
+        Bundle locations = new Bundle();
+        locations.putParcelable("nextLoc", nextLoc);
+        intent.putExtra("locations", locations);
+        startActivity(intent);
     }
 
     @Override
@@ -189,6 +207,12 @@ public class MapRouteActivity extends AppCompatActivity {
         }
 
         return super.onOptionsItemSelected(item);
+    }
+
+    @Override
+    public void onStart() {
+        super.onStart();
+        mapView.onStart();
     }
 
     @Override
@@ -219,13 +243,5 @@ public class MapRouteActivity extends AppCompatActivity {
     protected void onDestroy() {
         super.onDestroy();
         mapView.onDestroy();
-    }
-
-    public void startRoute(View view) {
-        Intent intent = new Intent(this, FollowRouteActivity.class);
-        Bundle locations = new Bundle();
-        locations.putParcelable("nextLoc", nextLoc);
-        intent.putExtra("locations", locations);
-        startActivity(intent);
     }
 }
