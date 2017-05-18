@@ -22,6 +22,9 @@ import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.google.firebase.auth.AuthResult;
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
@@ -44,6 +47,7 @@ import com.mapbox.services.android.navigation.v5.MapboxNavigation;
 import com.mapbox.services.android.telemetry.location.LocationEngine;
 import com.mapbox.services.android.telemetry.location.LocationEngineListener;
 import com.mapbox.services.api.ServicesException;
+import com.mapbox.services.api.directions.v5.models.StepIntersection;
 import com.mapbox.services.commons.geojson.LineString;
 import com.mapbox.services.commons.models.Position;
 import com.mapbox.services.api.directions.v5.DirectionsCriteria;
@@ -55,6 +59,7 @@ import com.mapbox.services.api.directions.v5.models.RouteLeg;
 
 import org.w3c.dom.Text;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
@@ -79,7 +84,7 @@ public class FollowRouteActivity extends AppCompatActivity {
     private FirebaseAuth mAuth;
     private DatabaseReference dbRef = FirebaseDatabase.getInstance().getReference();
     private FirebaseAuth.AuthStateListener mAuthListener;
-    private User user = new User("jeff", "jeff@jeff.com");
+    private User user = new User("jeff@jeff.com");
 
 
     @Override
@@ -87,6 +92,22 @@ public class FollowRouteActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_follow_route);
         Mapbox.getInstance(this, getString(R.string.access_token));
+
+        mAuth = FirebaseAuth.getInstance();
+        mAuthListener = new FirebaseAuth.AuthStateListener() {
+            @Override
+            public void onAuthStateChanged(@NonNull FirebaseAuth firebaseAuth) {
+                FirebaseUser user = firebaseAuth.getCurrentUser();
+                if (user != null) {
+                    //user is signed in
+                    Log.d(TAG, "onAuthStateChanged:signed_in" + user.getUid());
+                } else {
+                    //user not signed in
+                    Log.d(TAG, "onAuthStateChanged:signed_out");
+                    logOut();
+                }
+            }
+        };
 
         locationEngine = LocationSource.getLocationEngine(this);
         locationEngine.activate();
@@ -180,145 +201,6 @@ public class FollowRouteActivity extends AppCompatActivity {
 
         map.setMyLocationEnabled(true);
 
-        if (currentRoute != null) {
-            RouteLeg routeLeg = currentRoute.getLegs().get(0);
-            Log.d(TAG, "Next route distance: " + routeLeg.getDistance());
-            if (routeLeg.getSteps().size() > 0) {
-                LegStep nextStep;
-                if (routeLeg.getSteps().size() > 1)
-                    nextStep = routeLeg.getSteps().get(1);
-                else
-                    nextStep = routeLeg.getSteps().get(0);
-                Log.d(TAG, "Next route leg summary: " + nextStep.getDistance());
-                TextView nextDir = (TextView) findViewById(R.id.Nextdirection);
-                TextView timeRem = (TextView) findViewById(R.id.TimeRemaining);
-                TextView distRem = (TextView) findViewById(R.id.DistanceLeft);
-                ImageView arrow = (ImageView) findViewById(R.id.arrow);
-
-                int timeMin = (int) (currentRoute.getDuration() / 60);
-                double dist = currentRoute.getDistance() / 1609.34;
-                String diststr = String.format("%.1f miles", dist);
-
-                nextDir.setText(nextStep.getManeuver().getInstruction());
-                timeRem.setText(timeMin + " minutes");
-                distRem.setText(diststr);
-                //arrow.setImageResource("@drawable/");
-
-                FirebaseUser fb_user = mAuth.getCurrentUser();
-                if (fb_user != null) {
-                    Log.v(TAG, "Uid: " + fb_user.getUid());
-                    user.setRoute(currentRoute);
-                    //dbRef.child("users").setValue(user);
-                    dbRef.child("users").child(fb_user.getUid()).child("route").child("duration")
-                            .setValue(user.route.getDuration());
-                    dbRef.child("users").child(fb_user.getUid()).child("route").child("distance")
-                            .setValue(user.route.getDistance());
-                    dbRef.child("users").child(fb_user.getUid()).child("route").child("geometry")
-                            .setValue(user.route.getGeometry());
-                    dbRef.child("users").child(fb_user.getUid()).child("route").child("profileIdentifier")
-                            .setValue("mapbox/driving");
-                    //For the legs
-                    for (int i = 0; i < user.route.getLegs().size(); i++) {
-                        RouteLeg curLeg = user.route.getLegs().get(i);
-                        dbRef.child("users").child(fb_user.getUid()).child("route").child("legs").child(Integer.toString(i))
-                                .child("description").setValue(curLeg.getSummary());
-                        //need destination
-                        dbRef.child("users").child(fb_user.getUid()).child("route").child("legs").child(Integer.toString(i))
-                                .child("distance").setValue(curLeg.getDistance());
-                        //need expected travel time
-                        dbRef.child("users").child(fb_user.getUid()).child("route").child("legs").child(Integer.toString(i))
-                                .child("name").setValue(curLeg.getSummary());
-                        dbRef.child("users").child(fb_user.getUid()).child("route").child("legs").child(Integer.toString(i))
-                                .child("profileIdentifier").setValue("mapbox/driving");
-                        //need source
-                        //For the steps
-                        for (int j = 0; j < curLeg.getSteps().size(); j++) {
-                            LegStep curStep = curLeg.getSteps().get(j);
-                            dbRef.child("users").child(fb_user.getUid()).child("route").child("legs")
-                                    .child(Integer.toString(i)).child("steps").child(Integer.toString(j))
-                                    .child("geometry").setValue(curStep.getGeometry());
-                            dbRef.child("users").child(fb_user.getUid()).child("route").child("legs")
-                                    .child(Integer.toString(i)).child("steps").child(Integer.toString(j))
-                                    .child("distance").setValue(curStep.getDistance());
-                            dbRef.child("users").child(fb_user.getUid()).child("route").child("legs")
-                                    .child(Integer.toString(i)).child("steps").child(Integer.toString(j))
-                                    .child("duration").setValue(curStep.getDuration());
-                            dbRef.child("users").child(fb_user.getUid()).child("route").child("legs")
-                                    .child(Integer.toString(i)).child("steps").child(Integer.toString(j))
-                                    .child("mode").setValue(curStep.getMode());
-                            dbRef.child("users").child(fb_user.getUid()).child("route").child("legs")
-                                    .child(Integer.toString(i)).child("steps").child(Integer.toString(j))
-                                    .child("name").setValue(curStep.getName());
-                            // Remember to do intersections and maneuvers
-                            // for manuver
-                            dbRef.child("users").child(fb_user.getUid()).child("route").child("legs")
-                                    .child(Integer.toString(i)).child("steps").child(Integer.toString(j))
-                                    .child("maneuver").child("location")
-                                    .child("0").setValue(curStep.getManeuver().getLocation()[0]);
-                            dbRef.child("users").child(fb_user.getUid()).child("route").child("legs")
-                                    .child(Integer.toString(i)).child("steps").child(Integer.toString(j))
-                                    .child("maneuver").child("location")
-                                    .child("1").setValue(curStep.getManeuver().getLocation()[1]);
-                            dbRef.child("users").child(fb_user.getUid()).child("route").child("legs")
-                                    .child(Integer.toString(i)).child("steps").child(Integer.toString(j))
-                                    .child("maneuver").child("bearing_before")
-                                    .setValue(curStep.getManeuver().getBearingBefore());
-                            dbRef.child("users").child(fb_user.getUid()).child("route").child("legs")
-                                    .child(Integer.toString(i)).child("steps").child(Integer.toString(j))
-                                    .child("maneuver").child("bearing_after")
-                                    .setValue(curStep.getManeuver().getBearingAfter());
-                            dbRef.child("users").child(fb_user.getUid()).child("route").child("legs")
-                                    .child(Integer.toString(i)).child("steps").child(Integer.toString(j))
-                                    .child("maneuver").child("instruction")
-                                    .setValue(curStep.getManeuver().getInstruction());
-                            dbRef.child("users").child(fb_user.getUid()).child("route").child("legs")
-                                    .child(Integer.toString(i)).child("steps").child(Integer.toString(j))
-                                    .child("maneuver").child("type")
-                                    .setValue(curStep.getManeuver().getType());
-                            dbRef.child("users").child(fb_user.getUid()).child("route").child("legs")
-                                    .child(Integer.toString(i)).child("steps").child(Integer.toString(j))
-                                    .child("maneuver").child("modifier")
-                                    .setValue(curStep.getManeuver().getModifier());
-                            // for intersections
-                            for (int k = 0; k < curStep.getIntersections().size(); k++) {
-                                StepIntersection curInter = curStep.getIntersections().get(k);
-                                dbRef.child("users").child(fb_user.getUid()).child("route").child("legs")
-                                        .child(Integer.toString(i)).child("steps").child(Integer.toString(j))
-                                        .child("intersections").child("location").child("0").setValue(curInter.getLocation()[0]);
-                                dbRef.child("users").child(fb_user.getUid()).child("route").child("legs")
-                                        .child(Integer.toString(i)).child("steps").child(Integer.toString(j))
-                                        .child("intersections").child("location").child("1").setValue(curInter.getLocation()[1]);
-                                // for bearings
-                                for (int l = 0; l < curInter.getBearings().length; l++) {
-                                    dbRef.child("users").child(fb_user.getUid()).child("route").child("legs")
-                                            .child(Integer.toString(i)).child("steps").child(Integer.toString(j))
-                                            .child("intersections").child("bearings").child(Integer.toString(l))
-                                            .setValue(curInter.getBearings()[l]);
-                                }
-                                // for entry
-                                for (int l = 0; l < curInter.getEntry().length; l++) {
-                                    dbRef.child("users").child(fb_user.getUid()).child("route").child("legs")
-                                            .child(Integer.toString(i)).child("steps").child(Integer.toString(j))
-                                            .child("intersections").child("entry").child(Integer.toString(l))
-                                            .setValue(curInter.getEntry()[l]);
-                                }
-                                dbRef.child("users").child(fb_user.getUid()).child("route").child("legs")
-                                        .child(Integer.toString(i)).child("steps").child(Integer.toString(j))
-                                        .child("intersections").child("in").setValue(curInter.getIn());
-                                dbRef.child("users").child(fb_user.getUid()).child("route").child("legs")
-                                        .child(Integer.toString(i)).child("steps").child(Integer.toString(j))
-                                        .child("intersections").child("out").setValue(curInter.getOut());
-                            }
-                        }
-                    }
-                    Log.v(TAG, "user route set");
-                }
-
-                //database.child("users")
-            } else
-                Log.d(TAG, "Next route leg summary: No step found");
-        }
-
         return lastLocation;
     }
 
@@ -346,6 +228,145 @@ public class FollowRouteActivity extends AppCompatActivity {
                         FollowRouteActivity.this,
                         "Route is " + currentRoute.getDistance() + " meters long.",
                         Toast.LENGTH_SHORT).show();
+
+                if (currentRoute != null) {
+                    RouteLeg routeLeg = currentRoute.getLegs().get(0);
+                    Log.d(TAG, "Next route distance: " + routeLeg.getDistance());
+                    if (routeLeg.getSteps().size() > 0) {
+                        LegStep nextStep;
+                        if (routeLeg.getSteps().size() > 1)
+                            nextStep = routeLeg.getSteps().get(1);
+                        else
+                            nextStep = routeLeg.getSteps().get(0);
+                        Log.d(TAG, "Next route leg summary: " + nextStep.getDistance());
+                        TextView nextDir = (TextView) findViewById(R.id.Nextdirection);
+                        TextView timeRem = (TextView) findViewById(R.id.TimeRemaining);
+                        TextView distRem = (TextView) findViewById(R.id.DistanceLeft);
+                        ImageView arrow = (ImageView) findViewById(R.id.arrow);
+
+                        int timeMin = (int) (currentRoute.getDuration() / 60);
+                        double dist = currentRoute.getDistance() / 1609.34;
+                        String diststr = String.format("%.1f miles", dist);
+
+                        nextDir.setText(nextStep.getManeuver().getInstruction());
+                        timeRem.setText(timeMin + " minutes");
+                        distRem.setText(diststr);
+                        //arrow.setImageResource("@drawable/");
+
+                        FirebaseUser fb_user = mAuth.getCurrentUser();
+                        if (fb_user != null) {
+                            Log.v(TAG, "Uid: " + fb_user.getUid());
+                            user.setRoute(currentRoute);
+                            //dbRef.child("users").child(fb_user.getUid()).setValue(user.route);
+                            dbRef.child("users").child(fb_user.getUid()).child("route").child("duration")
+                                    .setValue(user.route.getDuration());
+                            dbRef.child("users").child(fb_user.getUid()).child("route").child("distance")
+                                    .setValue(user.route.getDistance());
+                            dbRef.child("users").child(fb_user.getUid()).child("route").child("geometry")
+                                    .setValue(user.route.getGeometry());
+                            dbRef.child("users").child(fb_user.getUid()).child("route").child("profileIdentifier")
+                                    .setValue("mapbox/driving");
+                            //For the legs
+                            for (int i = 0; i < user.route.getLegs().size(); i++) {
+                                RouteLeg curLeg = user.route.getLegs().get(i);
+                                dbRef.child("users").child(fb_user.getUid()).child("route").child("legs").child(Integer.toString(i))
+                                        .child("description").setValue(curLeg.getSummary());
+                                //need destination
+                                dbRef.child("users").child(fb_user.getUid()).child("route").child("legs").child(Integer.toString(i))
+                                        .child("distance").setValue(curLeg.getDistance());
+                                //need expected travel time
+                                dbRef.child("users").child(fb_user.getUid()).child("route").child("legs").child(Integer.toString(i))
+                                        .child("name").setValue(curLeg.getSummary());
+                                dbRef.child("users").child(fb_user.getUid()).child("route").child("legs").child(Integer.toString(i))
+                                        .child("profileIdentifier").setValue("mapbox/driving");
+                                //need source
+                                //For the steps
+                                for (int j = 0; j < curLeg.getSteps().size(); j++) {
+                                    LegStep curStep = curLeg.getSteps().get(j);
+                                    dbRef.child("users").child(fb_user.getUid()).child("route").child("legs")
+                                            .child(Integer.toString(i)).child("steps").child(Integer.toString(j))
+                                            .child("geometry").setValue(curStep.getGeometry());
+                                    dbRef.child("users").child(fb_user.getUid()).child("route").child("legs")
+                                            .child(Integer.toString(i)).child("steps").child(Integer.toString(j))
+                                            .child("distance").setValue(curStep.getDistance());
+                                    dbRef.child("users").child(fb_user.getUid()).child("route").child("legs")
+                                            .child(Integer.toString(i)).child("steps").child(Integer.toString(j))
+                                            .child("duration").setValue(curStep.getDuration());
+                                    dbRef.child("users").child(fb_user.getUid()).child("route").child("legs")
+                                            .child(Integer.toString(i)).child("steps").child(Integer.toString(j))
+                                            .child("mode").setValue(curStep.getMode());
+                                    dbRef.child("users").child(fb_user.getUid()).child("route").child("legs")
+                                            .child(Integer.toString(i)).child("steps").child(Integer.toString(j))
+                                            .child("name").setValue(curStep.getName());
+                                    // Remember to do intersections and maneuvers
+                                    // for manuver
+                                    dbRef.child("users").child(fb_user.getUid()).child("route").child("legs")
+                                            .child(Integer.toString(i)).child("steps").child(Integer.toString(j))
+                                            .child("maneuver").child("location")
+                                            .child("0").setValue(curStep.getManeuver().getLocation()[0]);
+                                    dbRef.child("users").child(fb_user.getUid()).child("route").child("legs")
+                                            .child(Integer.toString(i)).child("steps").child(Integer.toString(j))
+                                            .child("maneuver").child("location")
+                                            .child("1").setValue(curStep.getManeuver().getLocation()[1]);
+                                    dbRef.child("users").child(fb_user.getUid()).child("route").child("legs")
+                                            .child(Integer.toString(i)).child("steps").child(Integer.toString(j))
+                                            .child("maneuver").child("bearing_before")
+                                            .setValue(curStep.getManeuver().getBearingBefore());
+                                    dbRef.child("users").child(fb_user.getUid()).child("route").child("legs")
+                                            .child(Integer.toString(i)).child("steps").child(Integer.toString(j))
+                                            .child("maneuver").child("bearing_after")
+                                            .setValue(curStep.getManeuver().getBearingAfter());
+                                    dbRef.child("users").child(fb_user.getUid()).child("route").child("legs")
+                                            .child(Integer.toString(i)).child("steps").child(Integer.toString(j))
+                                            .child("maneuver").child("instruction")
+                                            .setValue(curStep.getManeuver().getInstruction());
+                                    dbRef.child("users").child(fb_user.getUid()).child("route").child("legs")
+                                            .child(Integer.toString(i)).child("steps").child(Integer.toString(j))
+                                            .child("maneuver").child("type")
+                                            .setValue(curStep.getManeuver().getType());
+                                    dbRef.child("users").child(fb_user.getUid()).child("route").child("legs")
+                                            .child(Integer.toString(i)).child("steps").child(Integer.toString(j))
+                                            .child("maneuver").child("modifier")
+                                            .setValue(curStep.getManeuver().getModifier());
+                                    // for intersections
+                                    for (int k = 0; k < curStep.getIntersections().size(); k++) {
+                                        StepIntersection curInter = curStep.getIntersections().get(k);
+                                        dbRef.child("users").child(fb_user.getUid()).child("route").child("legs")
+                                                .child(Integer.toString(i)).child("steps").child(Integer.toString(j))
+                                                .child("intersections").child("location").child("0").setValue(curInter.getLocation()[0]);
+                                        dbRef.child("users").child(fb_user.getUid()).child("route").child("legs")
+                                                .child(Integer.toString(i)).child("steps").child(Integer.toString(j))
+                                                .child("intersections").child("location").child("1").setValue(curInter.getLocation()[1]);
+                                        // for bearings
+                                        for (int l = 0; l < curInter.getBearings().length; l++) {
+                                            dbRef.child("users").child(fb_user.getUid()).child("route").child("legs")
+                                                    .child(Integer.toString(i)).child("steps").child(Integer.toString(j))
+                                                    .child("intersections").child("bearings").child(Integer.toString(l))
+                                                    .setValue(curInter.getBearings()[l]);
+                                        }
+                                        // for entry
+                                        for (int l = 0; l < curInter.getEntry().length; l++) {
+                                            dbRef.child("users").child(fb_user.getUid()).child("route").child("legs")
+                                                    .child(Integer.toString(i)).child("steps").child(Integer.toString(j))
+                                                    .child("intersections").child("entry").child(Integer.toString(l))
+                                                    .setValue(curInter.getEntry()[l]);
+                                        }
+                                        dbRef.child("users").child(fb_user.getUid()).child("route").child("legs")
+                                                .child(Integer.toString(i)).child("steps").child(Integer.toString(j))
+                                                .child("intersections").child("in").setValue(curInter.getIn());
+                                        dbRef.child("users").child(fb_user.getUid()).child("route").child("legs")
+                                                .child(Integer.toString(i)).child("steps").child(Integer.toString(j))
+                                                .child("intersections").child("out").setValue(curInter.getOut());
+                                    }
+                                }
+                            }
+                            Log.v(TAG, "user route set");
+                        }
+
+                        //database.child("users")
+                    } else
+                        Log.d(TAG, "Next route leg summary: No step found");
+                }
                 drawRoute(currentRoute);
             }
 
@@ -432,5 +453,11 @@ public class FollowRouteActivity extends AppCompatActivity {
     protected void onDestroy() {
         super.onDestroy();
         mapView.onDestroy();
+    }
+
+    public void logOut() {
+        Intent intent = new Intent(this, LoginActivity.class);
+        startActivity(intent);
+        this.finish();
     }
 }

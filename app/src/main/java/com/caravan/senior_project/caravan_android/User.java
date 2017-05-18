@@ -1,6 +1,6 @@
 package com.caravan.senior_project.caravan_android;
 
-import com.mapbox.services.directions.v5.models.DirectionsRoute;
+import com.mapbox.services.api.directions.v5.models.DirectionsRoute;
 
 /**
  * Created by Jeffrey on 4/10/2017.
@@ -24,6 +24,10 @@ public class User {
     public void setCoords(double lat, double lon) {
         coord.latitude = lat;
         coord.longitude = lon;
+    }
+
+    public void setRoute(DirectionsRoute route) {
+        this.route = route;
     }
 
     public String getEmail() {

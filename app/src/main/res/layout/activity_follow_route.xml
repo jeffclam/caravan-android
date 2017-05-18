@@ -27,15 +27,45 @@
                 mapbox:mapbox_cameraTargetLng="-77.036"
                 mapbox:mapbox_styleUrl="@string/mapbox_style_mapbox_streets"
                 mapbox:mapbox_cameraTilt="20"
-                mapbox:mapbox_cameraZoom="12" />
+                mapbox:mapbox_cameraZoom="12" >
 
                 <LinearLayout
-                    android:layout_width="341dp"
+                    android:layout_width="match_parent"
+                    android:layout_height="106dp"
+                    android:layout_gravity="bottom"
+                    android:background="@color/common_google_signin_btn_text_dark_default"
+                    android:orientation="horizontal"
+                    android:paddingTop="20dp">
+
+                    <TextView
+                        android:id="@+id/TimeRemaining"
+                        android:layout_width="200dp"
+                        android:layout_height="50dp"
+                        android:layout_marginBottom="5dp"
+                        android:layout_marginLeft="5dp"
+                        android:layout_marginRight="5dp"
+                        android:layout_marginTop="5dp"
+                        android:text="Loading Time Remaining..."
+                        android:textColor="@color/colorPrimaryDark"
+                        android:textSize="20dp" />
+
+                    <TextView
+                        android:id="@+id/DistanceLeft"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:paddingTop="5dp"
+                        android:text="Loading Distance Remaining..."
+                        android:textSize="20sp" />
+                </LinearLayout>
+            </com.mapbox.mapboxsdk.maps.MapView>
+
+                <LinearLayout
+                    android:layout_width="match_parent"
                     android:layout_height="106dp"
                     android:orientation="horizontal"
                     android:layout_gravity="center_horizontal"
                     android:paddingTop="20dp"
-                    android:background="@color/colorPrimary">
+                    android:background="@color/common_google_signin_btn_text_dark_default">
                     <ImageView
                         android:id="@+id/arrow"
                         android:layout_width="50dp"
@@ -54,32 +84,6 @@
                         android:text="Loading Directions..."/>
                 </LinearLayout>
 
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="106dp"
-                    android:orientation="horizontal"
-                    android:layout_gravity="bottom"
-                    android:paddingTop="20dp"
-                    android:background="@color/colorPrimary">
-                    <TextView
-                        android:id="@+id/TimeRemaining"
-                        android:layout_width="200dp"
-                        android:layout_height="50dp"
-                        android:layout_marginBottom="5dp"
-                        android:layout_marginLeft="5dp"
-                        android:layout_marginRight="5dp"
-                        android:layout_marginTop="5dp"
-                        android:textSize="20dp"
-                        android:textColor="@color/colorPrimaryDark"
-                        android:text="Loading Time Remaining..."/>
-                    <TextView
-                        android:id="@+id/DistanceLeft"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:textSize="20sp"
-                        android:paddingTop="5dp"
-                        android:text="Loading Distance Remaining..."/>
-                </LinearLayout>
         </RelativeLayout>
     </FrameLayout>
 </android.support.design.widget.CoordinatorLayout>
