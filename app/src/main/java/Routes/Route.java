@@ -1,5 +1,9 @@
 package Routes;
 
+import com.mapbox.services.api.directions.v5.models.DirectionsRoute;
+import com.mapbox.services.api.directions.v5.models.RouteLeg;
+
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -57,5 +61,19 @@ public class Route {
 
     public void setProfileIdentifier(String profileIdentifier) {
         this.profileIdentifier = profileIdentifier;
+    }
+
+    public DirectionsRoute routeToDirectionsRoute() {
+        DirectionsRoute route = new DirectionsRoute();
+        route.setDistance(this.getDistance());
+        route.setDuration(this.getDuration());
+        route.setGeometry(this.getGeometry());
+
+        List<RouteLeg> routeLegs = new ArrayList<RouteLeg>();
+        for (Leg l : this.getLegs()) {
+            routeLegs.add(l.legToRouteLeg());
+        }
+        route.setLegs(routeLegs);
+        return route;
     }
 }

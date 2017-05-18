@@ -1,5 +1,10 @@
 package Routes;
 
+import com.mapbox.services.api.directions.v5.models.IntersectionLanes;
+import com.mapbox.services.api.directions.v5.models.LegStep;
+import com.mapbox.services.api.directions.v5.models.StepIntersection;
+
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -80,5 +85,17 @@ public class Step {
 
     public void setIntersections(Intersection intersections) {
         this.intersections = intersections;
+    }
+
+    public LegStep stepToLegStep() {
+        LegStep legStep = new LegStep();
+        legStep.setDuration(this.getDuration());
+        legStep.setDistance(this.getDistance());
+        legStep.setGeometry(this.getGeometry());
+        legStep.setManeuver(maneuver.maneuverToStepManeuver());
+        List<StepIntersection> stepIntersections = new ArrayList<StepIntersection>();
+        stepIntersections.add(intersections.intersectionToStepIntersection());
+        legStep.setIntersections(stepIntersections);
+        return legStep;
     }
 }

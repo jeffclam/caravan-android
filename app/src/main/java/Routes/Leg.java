@@ -1,5 +1,9 @@
 package Routes;
 
+import com.mapbox.services.api.directions.v5.models.LegStep;
+import com.mapbox.services.api.directions.v5.models.RouteLeg;
+
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -57,5 +61,16 @@ public class Leg {
 
     public void setSteps(List<Step> steps) {
         this.steps = steps;
+    }
+
+    public RouteLeg legToRouteLeg() {
+        RouteLeg routeLeg = new RouteLeg();
+        routeLeg.setDistance(this.getDistance());
+        List<LegStep> legSteps = new ArrayList<LegStep>();
+        for (Step s : this.getSteps()) {
+            legSteps.add(s.stepToLegStep());
+        }
+        routeLeg.setSteps(legSteps);
+        return routeLeg;
     }
 }
