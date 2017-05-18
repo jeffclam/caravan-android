@@ -49,6 +49,9 @@ import com.mapbox.services.api.geocoding.v5.models.CarmenFeature;
 
 import java.util.List;
 
+import Routes.Route;
+import Routes.Step;
+
 
 public class MainActivity extends AppCompatActivity implements PermissionsListener {
 
@@ -172,9 +175,18 @@ public class MainActivity extends AppCompatActivity implements PermissionsListen
         ValueEventListener the_route = new ValueEventListener() {
             @Override
             public void onDataChange(DataSnapshot dataSnapshot) {
-                //route = dataSnapshot.getValue(DirectionsRoute.class);
-                if (dataSnapshot.exists()) {
-                    Log.v(TAG, "got a route");
+                try {
+                    Step step = dataSnapshot.child("legs/0/steps/0").getValue(Step.class);
+                    Log.d(TAG, "Step was read.  Step.distance: " + step.getDistance());
+                } catch (Exception e) {
+                    Log.e(TAG, "Could not read Step class");
+                }
+
+                try {
+                    Route my_route = dataSnapshot.getValue(Route.class);
+                    Log.d(TAG, "Route was read.  Route.distance: " + my_route.getDistance());
+                } catch (Exception e) {
+                    Log.e(TAG, "Could not read Step class");
                 }
             }
 
@@ -231,7 +243,9 @@ public class MainActivity extends AppCompatActivity implements PermissionsListen
                         // Move map to where the user location is.
                         map.moveCamera(CameraUpdateFactory.newLatLngZoom(new LatLng(location), 16));
                         // Removes listener so it's not constantly updating
-                        locationEngine.removeLocationEngineListener(this);
+                        //locationEngine.removeLocationEngineListener(this);
+                    } else {
+                        Log.e(TAG, "No location???");
                     }
                 }
             };
