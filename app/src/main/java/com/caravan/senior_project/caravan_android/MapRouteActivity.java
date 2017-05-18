@@ -17,6 +17,7 @@ import com.mapbox.mapboxsdk.Mapbox;
 import com.mapbox.mapboxsdk.annotations.Icon;
 import com.mapbox.mapboxsdk.annotations.IconFactory;
 import com.mapbox.mapboxsdk.annotations.MarkerOptions;
+import com.mapbox.mapboxsdk.annotations.Polyline;
 import com.mapbox.mapboxsdk.annotations.PolylineOptions;
 import com.mapbox.mapboxsdk.camera.CameraPosition;
 import com.mapbox.mapboxsdk.camera.CameraUpdateFactory;
@@ -25,6 +26,9 @@ import com.mapbox.mapboxsdk.maps.MapView;
 import com.mapbox.mapboxsdk.maps.MapboxMap;
 import com.mapbox.mapboxsdk.maps.OnMapReadyCallback;
 import com.mapbox.services.Constants;
+import com.mapbox.services.android.location.LostLocationEngine;
+import com.mapbox.services.android.navigation.v5.MapboxNavigation;
+import com.mapbox.services.android.telemetry.location.LocationEngine;
 import com.mapbox.services.api.ServicesException;
 import com.mapbox.services.commons.geojson.LineString;
 import com.mapbox.services.commons.models.Position;
@@ -33,6 +37,7 @@ import com.mapbox.services.api.directions.v5.MapboxDirections;
 import com.mapbox.services.api.directions.v5.models.DirectionsResponse;
 import com.mapbox.services.api.directions.v5.models.DirectionsRoute;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import retrofit2.Call;
@@ -47,6 +52,7 @@ public class MapRouteActivity extends AppCompatActivity {
     private MapboxMap map;
     private DirectionsRoute currentRoute;
     private Location nextLoc;
+    private Polyline routeLine;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -67,69 +73,63 @@ public class MapRouteActivity extends AppCompatActivity {
         if (locations != null) {
             start = locations.getParcelable("currentLoc");
             finish = locations.getParcelable("nextLoc");
-        }
+            nextLoc = finish;
 
-        nextLoc = finish;
+            final Position origin =
+                    Position.fromCoordinates(start.getLongitude(), start.getLatitude());
+            final Position destination =
+                    Position.fromCoordinates(finish.getLongitude(), finish.getLatitude());
+            /* Midpoint between origin and destination */
+            final LatLng centroid = new LatLng(
+                    (origin.getLatitude() + destination.getLatitude()) / 2,
+                    (origin.getLongitude() + destination.getLongitude()) / 2
+            );
 
-        final Position origin =
-                Position.fromCoordinates(start.getLongitude(), start.getLatitude());
-        final Position destination =
-                Position.fromCoordinates(finish.getLongitude(), finish.getLatitude());
+            // Create a mapView
+            mapView = (MapView) findViewById(R.id.mapview);
+            mapView.onCreate(savedInstanceState);
 
-        /* Midpoint between origin and destination */
-        final LatLng centroid = new LatLng(
-            (origin.getLatitude() + destination.getLatitude()) / 2,
-                (origin.getLongitude() + destination.getLongitude()) / 2
-        );
+            // Add a MapboxMap
+            mapView.getMapAsync(new OnMapReadyCallback() {
+                @Override
+                public void onMapReady(MapboxMap mapboxMap) {
+                    map = mapboxMap;
 
-        // Create a mapView
-        mapView = (MapView) findViewById(R.id.mapview);
-        mapView.onCreate(savedInstanceState);
-
-        // Add a MapboxMap
-        mapView.getMapAsync(new OnMapReadyCallback() {
-            @Override
-            public void onMapReady(MapboxMap mapboxMap) {
-                map = mapboxMap;
-                
                 /* Set the camera's position to middle of origin and destination */
-                CameraPosition position = new CameraPosition.Builder()
-                        .target(new LatLng(centroid.getLatitude(), centroid.getLongitude()))
-                        .build();
-                map.moveCamera(CameraUpdateFactory
-                        .newCameraPosition(position));
-                        
+                    CameraPosition position = new CameraPosition.Builder()
+                            .target(new LatLng(centroid.getLatitude(), centroid.getLongitude()))
+                            .build();
+                    map.moveCamera(CameraUpdateFactory
+                            .newCameraPosition(position));
+
                 /* Set a marker at the starting location */
-                mapboxMap.addMarker(new MarkerOptions()
-                .position(new LatLng(origin.getLatitude(), origin.getLongitude()))
-                .icon(icon));
+                    mapboxMap.addMarker(new MarkerOptions()
+                            .position(new LatLng(origin.getLatitude(), origin.getLongitude()))
+                            .icon(icon));
 
                 /* Set a marker at the destination location */
-                mapboxMap.addMarker(new MarkerOptions()
-                .position(new LatLng(destination.getLatitude(), destination.getLongitude())));
+                    mapboxMap.addMarker(new MarkerOptions()
+                            .position(new LatLng(destination.getLatitude(), destination.getLongitude())));
 
-                try {
-                    getRoute(origin, destination);
-                } catch (ServicesException servicesException) {
-                    servicesException.printStackTrace();
+                    try {
+                        getRoute(origin, destination);
+                    } catch (ServicesException servicesException) {
+                        servicesException.printStackTrace();
+                    }
+
                 }
 
-            }
-
-        });
+            });
+        }
     }
 
     private void getRoute(Position origin, Position destination) throws ServicesException {
-        /* Call Mapbox Client instance */
-        MapboxDirections client = new MapboxDirections.Builder()
-                .setOrigin(origin)
-                .setDestination(destination)
-                .setProfile(DirectionsCriteria.PROFILE_DRIVING)
-                .setAccessToken(Mapbox.getAccessToken())
-                .build();
+        MapboxNavigation navigation = new MapboxNavigation(this, Mapbox.getAccessToken());
 
-        /* Call for a route that goes from origin to destination */
-        client.enqueueCall(new Callback<DirectionsResponse>() {
+        LocationEngine locationEngine = LostLocationEngine.getLocationEngine(this);
+        navigation.setLocationEngine(locationEngine);
+
+        navigation.getRoute(origin, destination, new Callback<DirectionsResponse>() {
             @Override
             public void onResponse(Call<DirectionsResponse> call, Response<DirectionsResponse> response) {
                 Log.d(TAG, "Response code: " + response.code());
@@ -140,8 +140,7 @@ public class MapRouteActivity extends AppCompatActivity {
                     Log.e(TAG, "No routes found");
                     return;
                 }
-                
-                /* Get the first route available and draw it if exists */
+
                 currentRoute = response.body().getRoutes().get(0);
                 Log.d(TAG, "Distance: " + currentRoute.getDistance());
                 Toast.makeText(
@@ -151,31 +150,33 @@ public class MapRouteActivity extends AppCompatActivity {
                 drawRoute(currentRoute);
             }
 
-            public void onFailure(Call<DirectionsResponse> call, Throwable throwable) {
-                Log.e(TAG, "Error: " + throwable.getMessage());
-                Toast.makeText(MapRouteActivity.this, "Error: " + throwable.getMessage(), Toast.LENGTH_SHORT).show();
+            @Override
+            public void onFailure(Call<DirectionsResponse> call, Throwable t) {
+                Log.e(TAG, "Error: " + t.getMessage());
+                Toast.makeText(MapRouteActivity.this, "Error: " + t.getMessage(), Toast.LENGTH_SHORT).show();
             }
         });
     }
 
     /* Call MapBox commands to draw a route onto the map */
     private void drawRoute(DirectionsRoute route) {
-        LineString lineString  = LineString.fromPolyline(route.getGeometry(), Constants.OSRM_PRECISION_V5);
-        List<Position> coordinates = lineString.getCoordinates();
-        LatLng[] points = new LatLng[coordinates.size()];
-        
-        /* Add each coordinate points to a Coordinates array */
-        for (int i = 0; i < coordinates.size(); i++) {
-            points[i] = new LatLng(
-                    coordinates.get(i).getLatitude(),
-                    coordinates.get(i).getLongitude());
+        LineString lineString  = LineString.fromPolyline(route.getGeometry(), Constants.PRECISION_6);
+        List<Position> positions = lineString.getCoordinates();
+        List<LatLng> latLngs = new ArrayList<>();
+
+        for (Position position : positions) {
+            latLngs.add(new LatLng(position.getLatitude(), position.getLongitude()));
+        }
+
+        if (routeLine != null) {
+            map.removePolyline(routeLine);
         }
         
         /* Draw the lines */
-        map.addPolyline(new PolylineOptions()
-        .add(points)
-        .color(Color.parseColor("#009688"))
-        .width(5));
+        routeLine = map.addPolyline(new PolylineOptions()
+            .addAll(latLngs)
+            .color(Color.parseColor("#009688"))
+            .width(5f));
     }
     
      /* Start route, send location information to the next activity */
@@ -213,6 +214,12 @@ public class MapRouteActivity extends AppCompatActivity {
     public void onStart() {
         super.onStart();
         mapView.onStart();
+    }
+
+    @Override
+    public void onStop() {
+        super.onStop();
+        mapView.onStop();
     }
 
     @Override

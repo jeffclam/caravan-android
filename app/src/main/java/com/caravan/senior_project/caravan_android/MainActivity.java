@@ -146,10 +146,11 @@ public class MainActivity extends AppCompatActivity implements PermissionsListen
                 if (dataSnapshot.exists()) {
                     Log.v(TAG, "Other Coords: " + friendCoord.getLatitude() + ", " + friendCoord.getLongitude());
                     
-                    /* Adds marker to friend's location */
+                    /* Adds marker to friend's location
                     map.addMarker(new MarkerViewOptions()
                         .position(new LatLng(friendCoord.getLatitude(), friendCoord.getLongitude()))
                         .icon(icon));
+                        */
                 }
             }
 
@@ -197,21 +198,6 @@ public class MainActivity extends AppCompatActivity implements PermissionsListen
                 .zoom(15)
                 .build();
         map.animateCamera(CameraUpdateFactory.newCameraPosition(cameraPosition), 5000, null);
-    }
-
-    private static class LatLngEvaluator implements TypeEvaluator<LatLng> {
-        // Method is used to interpolate the marker animation.
-
-        private LatLng latLng = new LatLng();
-
-        @Override
-        public LatLng evaluate(float fraction, LatLng startValue, LatLng endValue) {
-            latLng.setLatitude(startValue.getLatitude()
-                    + ((endValue.getLatitude() - startValue.getLatitude()) * fraction));
-            latLng.setLongitude(startValue.getLongitude()
-                    + ((endValue.getLongitude() - startValue.getLongitude()) * fraction));
-            return latLng;
-        }
     }
 
     public void currentLocation(View view) {
@@ -310,6 +296,12 @@ public class MainActivity extends AppCompatActivity implements PermissionsListen
     public void onStart() {
         super.onStart();
         mapView.onStart();
+    }
+
+    @Override
+    public void onStop() {
+        super.onStop();
+        mapView.onStop();
     }
 
     @Override

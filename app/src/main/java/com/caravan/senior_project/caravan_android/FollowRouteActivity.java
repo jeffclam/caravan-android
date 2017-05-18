@@ -37,6 +37,8 @@ import com.mapbox.mapboxsdk.maps.MapView;
 import com.mapbox.mapboxsdk.maps.MapboxMap;
 import com.mapbox.mapboxsdk.maps.OnMapReadyCallback;
 import com.mapbox.services.Constants;
+import com.mapbox.services.android.location.LostLocationEngine;
+import com.mapbox.services.android.navigation.v5.MapboxNavigation;
 import com.mapbox.services.android.telemetry.location.LocationEngine;
 import com.mapbox.services.android.telemetry.location.LocationEngineListener;
 import com.mapbox.services.api.ServicesException;
@@ -51,6 +53,7 @@ import com.mapbox.services.api.directions.v5.models.RouteLeg;
 
 import org.w3c.dom.Text;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import retrofit2.Call;
@@ -66,7 +69,7 @@ public class FollowRouteActivity extends AppCompatActivity {
     private MapView mapView;
     private MapboxMap map;
     private DirectionsRoute currentRoute;
-    private Polyline drawnRoute = null;
+    private Polyline routeLine = null;
     private LocationEngine locationEngine;
     private LocationEngineListener locationEngineListener;
     private DatabaseReference otherUserRef;
@@ -200,16 +203,12 @@ public class FollowRouteActivity extends AppCompatActivity {
     }
 
     private void getRoute(Position origin, Position destination) throws ServicesException {
+        MapboxNavigation navigation = new MapboxNavigation(this, Mapbox.getAccessToken());
 
-        MapboxDirections client = new MapboxDirections.Builder()
-                .setSteps(true)
-                .setOrigin(origin)
-                .setDestination(destination)
-                .setProfile(DirectionsCriteria.PROFILE_DRIVING)
-                .setAccessToken(Mapbox.getAccessToken())
-                .build();
+        LocationEngine locationEngine = LostLocationEngine.getLocationEngine(this);
+        navigation.setLocationEngine(locationEngine);
 
-        client.enqueueCall(new Callback<DirectionsResponse>() {
+        navigation.getRoute(origin, destination, new Callback<DirectionsResponse>() {
             @Override
             public void onResponse(Call<DirectionsResponse> call, Response<DirectionsResponse> response) {
                 Log.d(TAG, "Response code: " + response.code());
@@ -223,46 +222,39 @@ public class FollowRouteActivity extends AppCompatActivity {
 
                 currentRoute = response.body().getRoutes().get(0);
                 Log.d(TAG, "Distance: " + currentRoute.getDistance());
-
-                /*text.setText("Route is " + currentRoute.getDistance() + " meters long.");
-                Toast toast = new Toast(getApplicationContext());
-                toast.setGravity(Gravity.CENTER_VERTICAL, 0, 0);
-                toast.setDuration(Toast.LENGTH_LONG);
-                toast.setView(layout);
-                toast.show();*/
-                /*Toast.makeText(
+                Toast.makeText(
                         FollowRouteActivity.this,
                         "Route is " + currentRoute.getDistance() + " meters long.",
                         Toast.LENGTH_SHORT).show();
-*/
                 drawRoute(currentRoute);
-
             }
 
-            public void onFailure(Call<DirectionsResponse> call, Throwable throwable) {
-                Log.e(TAG, "Error: " + throwable.getMessage());
-                Toast.makeText(FollowRouteActivity.this, "Error: " + throwable.getMessage(), Toast.LENGTH_SHORT).show();
+            @Override
+            public void onFailure(Call<DirectionsResponse> call, Throwable t) {
+                Log.e(TAG, "Error: " + t.getMessage());
+                Toast.makeText(FollowRouteActivity.this, "Error: " + t.getMessage(), Toast.LENGTH_SHORT).show();
             }
         });
     }
 
     private void drawRoute(DirectionsRoute route) {
-        LineString lineString  = LineString.fromPolyline(route.getGeometry(), Constants.OSRM_PRECISION_V5);
-        List<Position> coordinates = lineString.getCoordinates();
-        LatLng[] points = new LatLng[coordinates.size()];
-        for (int i = 0; i < coordinates.size(); i++) {
-            points[i] = new LatLng(
-                    coordinates.get(i).getLatitude(),
-                    coordinates.get(i).getLongitude());
+        LineString lineString  = LineString.fromPolyline(route.getGeometry(), Constants.PRECISION_6);
+        List<Position> positions = lineString.getCoordinates();
+        List<LatLng> latLngs = new ArrayList<>();
+
+        for (Position position : positions) {
+            latLngs.add(new LatLng(position.getLatitude(), position.getLongitude()));
         }
-        if (drawnRoute != null) {
-            map.removePolyline(drawnRoute);
-            drawnRoute = null;
+
+        if (routeLine != null) {
+            map.removePolyline(routeLine);
         }
-        drawnRoute = map.addPolyline(new PolylineOptions()
-                .add(points)
+
+        /* Draw the lines */
+        routeLine = map.addPolyline(new PolylineOptions()
+                .addAll(latLngs)
                 .color(Color.parseColor("#009688"))
-                .width(5));
+                .width(5f));
     }
     
     @Override
@@ -284,6 +276,12 @@ public class FollowRouteActivity extends AppCompatActivity {
     public void onStart() {
         super.onStart();
         mapView.onStart();
+    }
+
+    @Override
+    public void onStop() {
+        super.onStop();
+        mapView.onStop();
     }
 
     @Override
