@@ -181,13 +181,21 @@ public class MainActivity extends AppCompatActivity implements PermissionsListen
                 } catch (Exception e) {
                     Log.e(TAG, "Could not read Step class");
                 }
-
+                Route my_route = null;
                 try {
-                    Route my_route = dataSnapshot.getValue(Route.class);
+                    my_route = dataSnapshot.getValue(Route.class);
                     Log.d(TAG, "Route was read.  Route.distance: " + my_route.getDistance());
                 } catch (Exception e) {
-                    Log.e(TAG, "Could not read Step class");
+                    Log.e(TAG, "Could not read route class");
                 }
+
+                if(my_route != null) {
+                    DirectionsRoute d_route = my_route.routeToDirectionsRoute();
+                    Log.d(TAG, "Route converted to DirectionsRoute");
+                } else {
+                    Log.e(TAG, "Route could not convert");
+                }
+
             }
 
             @Override
