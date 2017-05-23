@@ -257,8 +257,9 @@ public class FollowRouteActivity extends AppCompatActivity {
                         if (fb_user != null) {
                             Log.v(TAG, "Uid: " + fb_user.getUid());
                             user.setRoute(currentRoute);
-                            //dbRef.child("users").child(fb_user.getUid()).setValue(user.route);
-                            dbRef.child("users").child(fb_user.getUid()).child("route").child("duration")
+                            MyDirectionsRoute myroute = new MyDirectionsRoute(currentRoute);
+                            dbRef.child("users").child(fb_user.getUid()).child("route").setValue(myroute);
+                            /*dbRef.child("users").child(fb_user.getUid()).child("route").child("duration")
                                     .setValue(user.route.getDuration());
                             dbRef.child("users").child(fb_user.getUid()).child("route").child("distance")
                                     .setValue(user.route.getDistance());
@@ -359,7 +360,7 @@ public class FollowRouteActivity extends AppCompatActivity {
                                                 .child("intersections").child("out").setValue(curInter.getOut());
                                     }
                                 }
-                            }
+                            }*/
                             Log.v(TAG, "user route set");
                         }
 
