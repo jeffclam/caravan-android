@@ -1,4 +1,4 @@
-package com.caravan.senior_project.caravan_android;
+package com.caravan.senior_project.my_routes;
 
 import com.mapbox.services.api.directions.v5.models.IntersectionLanes;
 import com.mapbox.services.api.directions.v5.models.StepIntersection;
@@ -204,5 +204,33 @@ public class MyStepIntersection {
      */
     public void setLanes(List<MyIntersectionLanes> lanes) {
         this.lanes = lanes;
+    }
+
+    public StepIntersection intersectionToStepIntersection() {
+        StepIntersection intersection = new StepIntersection();
+
+        double[] l = new double[location.size()];
+        for (int i = 0; i < location.size(); i++)
+            l[i] = location.get(i);
+        intersection.setLocation(l);
+
+        int[] b = new int[bearings.size()];
+        for (int i = 0; i < bearings.size(); i++)
+            b[i] = bearings.get(i);
+        intersection.setBearings(b);
+
+        boolean[] e = new boolean[entry.size()];
+        for (int i = 0; i < entry.size(); i++)
+            e[i] = entry.get(i);
+        intersection.setEntry(e);
+
+        intersection.setIn(in);
+        intersection.setOut(out);
+
+        IntersectionLanes[] lanes1 = new IntersectionLanes[lanes.size()];
+        for (int i = 0; i < lanes.size(); i++)
+            lanes1[i] = lanes.get(i).myLanesToIntersectionLanes();
+        intersection.setLanes(lanes1);
+        return intersection;
     }
 }
