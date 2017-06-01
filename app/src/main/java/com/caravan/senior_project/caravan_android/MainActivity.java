@@ -1,23 +1,26 @@
 package com.caravan.senior_project.caravan_android;
 
-import android.animation.TypeEvaluator;
 import android.content.Intent;
-import android.content.pm.PackageManager;
-import android.graphics.drawable.Drawable;
+import android.graphics.Color;
 import android.location.Location;
-import android.Manifest;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
-import android.support.v4.app.ActivityCompat;
-import android.support.v4.content.ContextCompat;
+import android.support.v4.widget.DrawerLayout;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.view.View;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.widget.AdapterView;
+import android.widget.ArrayAdapter;
 import android.widget.Button;
+import android.widget.ListView;
 import android.widget.Toast;
 
+import com.caravan.senior_project.my_routes.MyDirectionsRoute;
+import com.caravan.senior_project.my_routes.MyLegStep;
+import com.caravan.senior_project.users.Coord;
+import com.caravan.senior_project.users.User;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.database.DataSnapshot;
@@ -29,7 +32,8 @@ import com.mapbox.mapboxsdk.Mapbox;
 import com.mapbox.mapboxsdk.annotations.Icon;
 import com.mapbox.mapboxsdk.annotations.IconFactory;
 import com.mapbox.mapboxsdk.annotations.MarkerOptions;
-import com.mapbox.mapboxsdk.annotations.MarkerViewOptions;
+import com.mapbox.mapboxsdk.annotations.Polyline;
+import com.mapbox.mapboxsdk.annotations.PolylineOptions;
 import com.mapbox.mapboxsdk.camera.CameraPosition;
 import com.mapbox.mapboxsdk.camera.CameraUpdateFactory;
 import com.mapbox.mapboxsdk.geometry.LatLng;
@@ -37,54 +41,69 @@ import com.mapbox.mapboxsdk.location.LocationSource;
 import com.mapbox.mapboxsdk.maps.MapView;
 import com.mapbox.mapboxsdk.maps.MapboxMap;
 import com.mapbox.mapboxsdk.maps.OnMapReadyCallback;
+import com.mapbox.services.Constants;
 import com.mapbox.services.android.ui.geocoder.GeocoderAutoCompleteView;
 import com.mapbox.services.android.telemetry.location.LocationEngine;
 import com.mapbox.services.android.telemetry.location.LocationEngineListener;
 import com.mapbox.services.android.telemetry.permissions.PermissionsListener;
 import com.mapbox.services.android.telemetry.permissions.PermissionsManager;
+import com.mapbox.services.commons.geojson.LineString;
 import com.mapbox.services.commons.models.Position;
 import com.mapbox.services.api.directions.v5.models.DirectionsRoute;
 import com.mapbox.services.api.geocoding.v5.GeocodingCriteria;
 import com.mapbox.services.api.geocoding.v5.models.CarmenFeature;
 
+import java.util.ArrayList;
 import java.util.List;
-
-import Routes.Route;
-import Routes.Step;
 
 
 public class MainActivity extends AppCompatActivity implements PermissionsListener {
 
     public static String TAG = "MainActivity";
+
+    private String[] myDrawerButtons;
+    private DrawerLayout myDrawerLayout;
+    private ListView myDrawerList;
+
     private FirebaseAuth mAuth;
     private FirebaseAuth.AuthStateListener mAuthListener;
     FirebaseDatabase database = FirebaseDatabase.getInstance();
     DatabaseReference dbRef = database.getReference();
     DatabaseReference otherUserRef;
     DatabaseReference myUserRef;
+    private User user;
+    private Coord friendCoord;
 
     private MapView mapView;
     private MapboxMap map;
     private LocationEngine locationEngine;
     private LocationEngineListener locationEngineListener;
     private Location nextLoc = new Location("dummyProvider");
-    private User user;
-    private Coord friendCoord;
-    private DirectionsRoute route;
     private PermissionsManager permissionsManager;
-
-    private static final int PERMISSIONS_LOCATION = 0;
+    private Polyline routeLine;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         Mapbox.getInstance(this, getString(R.string.access_token));
+
+        // Layout Configurations
         setContentView(R.layout.activity_main);
 
-        // Icon object
-        IconFactory iconFactory = IconFactory.getInstance(MainActivity.this);
-        final Icon icon = iconFactory.fromResource(R.drawable.blue_marker);
+        // Set get buttons invisible
+        final Button get_directions = (Button) findViewById(R.id.get_directions_button);
+        get_directions.setVisibility(View.INVISIBLE);
 
+        // Initialize Drawer
+        myDrawerButtons = getResources().getStringArray(R.array.drawer_array);
+        myDrawerLayout = (DrawerLayout) findViewById(R.id.drawer_layout);
+        myDrawerList = (ListView) findViewById(R.id.left_drawer);
+
+        myDrawerList.setAdapter(new ArrayAdapter<String>(this,
+                R.layout.drawer_list_item, myDrawerButtons));
+        myDrawerList.setOnItemClickListener(new DrawerItemClickListener());
+
+        // Connection to firebase, check if logged in
         mAuth = FirebaseAuth.getInstance();
         mAuthListener = new FirebaseAuth.AuthStateListener() {
             @Override
@@ -96,17 +115,13 @@ public class MainActivity extends AppCompatActivity implements PermissionsListen
                 } else {
                     //user not signed in
                     Log.d(TAG, "onAuthStateChanged:signed_out");
-                    logOut();
                 }
             }
         };
 
+        // Get the LocationEngine to track current location
         locationEngine = LocationSource.getLocationEngine(this);
         locationEngine.activate();
-
-        Button current_location_button = (Button) findViewById(R.id.current_location_button);
-        final Button get_directions = (Button) findViewById(R.id.get_directions_button);
-        get_directions.setVisibility(View.INVISIBLE);
 
         // Create a mapView
         mapView = (MapView) findViewById(R.id.mapview);
@@ -119,6 +134,7 @@ public class MainActivity extends AppCompatActivity implements PermissionsListen
                 map = mapboxMap;
             }
         });
+        getLocation();
 
         /* Auto-completes the search bar for known locations */
         GeocoderAutoCompleteView autocomplete = (GeocoderAutoCompleteView) findViewById(R.id.query);
@@ -134,6 +150,10 @@ public class MainActivity extends AppCompatActivity implements PermissionsListen
                 get_directions.setVisibility(View.VISIBLE);
             }
         });
+
+        // Icon object
+        IconFactory iconFactory = IconFactory.getInstance(MainActivity.this);
+        final Icon icon = iconFactory.fromResource(R.drawable.blue_marker);
 
         /* Gets reference to other user */
         otherUserRef = FirebaseDatabase.getInstance().getReference()
@@ -162,12 +182,12 @@ public class MainActivity extends AppCompatActivity implements PermissionsListen
                 Log.w(TAG, "Load failed: ", databaseError.toException());
             }
         };
-
         Log.v(TAG, "Value Event Listener: ");
         otherUserRef.addValueEventListener(otherLocation);
-        Log.v(TAG, "Success");
+        Log.v(TAG, "Success: Finding other location");
 
 
+        // Attempts to grab the other user's route
         myUserRef = FirebaseDatabase.getInstance().getReference()
                 .child("users").child("oB0gb53K0rS7kW7vBbMAl7Co1h03")
                 .child("route");
@@ -176,24 +196,46 @@ public class MainActivity extends AppCompatActivity implements PermissionsListen
             @Override
             public void onDataChange(DataSnapshot dataSnapshot) {
                 try {
-                    Step step = dataSnapshot.child("legs/0/steps/0").getValue(Step.class);
+                    MyLegStep step = dataSnapshot.child("legs/0/steps/0").getValue(MyLegStep.class);
                     Log.d(TAG, "Step was read.  Step.distance: " + step.getDistance());
                 } catch (Exception e) {
                     Log.e(TAG, "Could not read Step class");
                 }
-                Route my_route = null;
+                MyDirectionsRoute my_route = null;
                 try {
-                    my_route = dataSnapshot.getValue(Route.class);
+                    my_route = dataSnapshot.getValue(MyDirectionsRoute.class);
                     Log.d(TAG, "Route was read.  Route.distance: " + my_route.getDistance());
                 } catch (Exception e) {
                     Log.e(TAG, "Could not read route class");
                 }
 
                 if(my_route != null) {
-                    DirectionsRoute d_route = my_route.routeToDirectionsRoute();
-                    Log.d(TAG, "Route converted to DirectionsRoute");
+                    try {
+                        DirectionsRoute d_route = my_route.routeToDirectionsRoute();
+                        Log.d(TAG, "MyRoute converted to DirectionsRoute");
+
+                        LineString lineString  = LineString.fromPolyline(d_route.getGeometry(), Constants.PRECISION_6);
+                        List<Position> positions = lineString.getCoordinates();
+                        List<LatLng> latLngs = new ArrayList<>();
+
+                        for (Position position : positions) {
+                            latLngs.add(new LatLng(position.getLatitude(), position.getLongitude()));
+                        }
+
+                        if (routeLine != null) {
+                            map.removePolyline(routeLine);
+                        }
+
+                        /* Draw the lines */
+                        routeLine = map.addPolyline(new PolylineOptions()
+                                .addAll(latLngs)
+                                .color(Color.parseColor("#960096"))
+                                .width(5f));
+                    } catch (Exception e) {
+                        Log.e(TAG, "MyRoute couldn't be converted to DirectionsRoute");
+                    }
                 } else {
-                    Log.e(TAG, "Route could not convert");
+                    Log.e(TAG, "Route is still null");
                 }
 
             }
@@ -251,13 +293,13 @@ public class MainActivity extends AppCompatActivity implements PermissionsListen
                         // Move map to where the user location is.
                         map.moveCamera(CameraUpdateFactory.newLatLngZoom(new LatLng(location), 16));
                         // Removes listener so it's not constantly updating
-                        //locationEngine.removeLocationEngineListener(this);
+                        locationEngine.removeLocationEngineListener(this);
                     } else {
                         Log.e(TAG, "No location???");
                     }
                 }
             };
-
+            locationEngine.addLocationEngineListener(locationEngineListener);
             map.setMyLocationEnabled(true);
 
             if (lastLocation != null) {
@@ -287,11 +329,31 @@ public class MainActivity extends AppCompatActivity implements PermissionsListen
     }
 
     public void logOut() {
+        Log.d(TAG, "logout button pressed");
+        mAuth.getInstance().signOut();
         Intent intent = new Intent(this, LoginActivity.class);
         startActivity(intent);
         this.finish();
     }
-    
+
+    private class DrawerItemClickListener implements ListView.OnItemClickListener {
+        @Override
+        public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+            selectItem(position);
+        }
+    }
+
+    private void selectItem(int position) {
+        Log.d(TAG, "drawer list position " + position + " clicked.");
+        switch (position) {
+            case 0:
+                logOut();
+                break;
+            default:
+                break;
+        }
+    }
+
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         // Inflate the menu; this adds items to the action bar if it is present.

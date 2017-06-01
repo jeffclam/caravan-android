@@ -1,4 +1,4 @@
-package com.caravan.senior_project.caravan_android;
+package com.caravan.senior_project.users;
 
 import com.mapbox.services.api.directions.v5.models.DirectionsRoute;
 

@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Defines the buttons in the drawer -->
+    <string-array name="drawer_array">
+        <item>Logout</item>
+    </string-array>
+</resources>
