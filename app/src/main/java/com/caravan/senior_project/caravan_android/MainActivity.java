@@ -103,22 +103,6 @@ public class MainActivity extends AppCompatActivity implements PermissionsListen
                 R.layout.drawer_list_item, myDrawerButtons));
         myDrawerList.setOnItemClickListener(new DrawerItemClickListener());
 
-        // Connection to firebase, check if logged in
-        mAuth = FirebaseAuth.getInstance();
-        mAuthListener = new FirebaseAuth.AuthStateListener() {
-            @Override
-            public void onAuthStateChanged(@NonNull FirebaseAuth firebaseAuth) {
-                FirebaseUser user = firebaseAuth.getCurrentUser();
-                if (user != null) {
-                    //user is signed in
-                    Log.d(TAG, "onAuthStateChanged:signed_in" + user.getUid());
-                } else {
-                    //user not signed in
-                    Log.d(TAG, "onAuthStateChanged:signed_out");
-                }
-            }
-        };
-
         // Get the LocationEngine to track current location
         locationEngine = LocationSource.getLocationEngine(this);
         locationEngine.activate();
@@ -134,7 +118,6 @@ public class MainActivity extends AppCompatActivity implements PermissionsListen
                 map = mapboxMap;
             }
         });
-        getLocation();
 
         /* Auto-completes the search bar for known locations */
         GeocoderAutoCompleteView autocomplete = (GeocoderAutoCompleteView) findViewById(R.id.query);
