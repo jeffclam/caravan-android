@@ -6,6 +6,7 @@ import android.graphics.Color;
 import android.location.Location;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
+import android.support.design.widget.BaseTransientBottomBar;
 import android.support.design.widget.FloatingActionButton;
 import android.support.design.widget.Snackbar;
 import android.support.v4.app.ActivityCompat;
@@ -31,11 +32,13 @@ import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.ValueEventListener;
 import com.mapbox.mapboxsdk.Mapbox;
+import com.mapbox.mapboxsdk.annotations.Marker;
 import com.mapbox.mapboxsdk.annotations.MarkerOptions;
 import com.mapbox.mapboxsdk.annotations.Polyline;
 import com.mapbox.mapboxsdk.annotations.PolylineOptions;
 import com.mapbox.mapboxsdk.camera.CameraPosition;
 import com.mapbox.mapboxsdk.camera.CameraUpdateFactory;
+import com.mapbox.mapboxsdk.constants.MyLocationTracking;
 import com.mapbox.mapboxsdk.geometry.LatLng;
 import com.mapbox.mapboxsdk.location.LocationSource;
 import com.mapbox.mapboxsdk.maps.MapView;
@@ -44,10 +47,21 @@ import com.mapbox.mapboxsdk.maps.OnMapReadyCallback;
 import com.mapbox.services.Constants;
 import com.mapbox.services.android.location.LostLocationEngine;
 import com.mapbox.services.android.navigation.v5.MapboxNavigation;
+import com.mapbox.services.android.navigation.v5.NavigationConstants;
+import com.mapbox.services.android.navigation.v5.RouteProgress;
+import com.mapbox.services.android.navigation.v5.listeners.AlertLevelChangeListener;
+import com.mapbox.services.android.navigation.v5.listeners.NavigationEventListener;
+import com.mapbox.services.android.navigation.v5.listeners.OffRouteListener;
+import com.mapbox.services.android.navigation.v5.listeners.ProgressChangeListener;
+import com.mapbox.services.android.navigation.v5.models.RouteLegProgress;
 import com.mapbox.services.android.telemetry.location.LocationEngine;
 import com.mapbox.services.android.telemetry.location.LocationEngineListener;
+import com.mapbox.services.android.telemetry.location.LocationEnginePriority;
+import com.mapbox.services.android.telemetry.permissions.PermissionsManager;
 import com.mapbox.services.api.ServicesException;
 import com.mapbox.services.api.directions.v5.models.StepIntersection;
+import com.mapbox.services.api.utils.turf.TurfConstants;
+import com.mapbox.services.api.utils.turf.TurfMeasurement;
 import com.mapbox.services.commons.geojson.LineString;
 import com.mapbox.services.commons.models.Position;
 import com.mapbox.services.api.directions.v5.DirectionsCriteria;
@@ -66,22 +80,31 @@ import java.util.List;
 import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
+import timber.log.Timber;
 
 import static java.sql.Types.NULL;
 
-public class FollowRouteActivity extends AppCompatActivity {
+public class FollowRouteActivity extends AppCompatActivity implements OnMapReadyCallback,
+        ProgressChangeListener, NavigationEventListener, AlertLevelChangeListener, OffRouteListener {
 
     private static final String TAG = "FollowRouteActivity";
 
+    // Map variables
     private MapView mapView;
     private MapboxMap map;
-    private DirectionsRoute currentRoute;
     private Polyline routeLine = null;
-    private LocationEngine locationEngine;
-    private LocationEngineListener locationEngineListener;
-    private DatabaseReference otherUserRef;
+    private Marker destinationMarker;
 
+    // Navigation related variables
+    private DirectionsRoute currentRoute;
+    private LocationEngine locationEngine;
+    private MapboxNavigation navigation;
+    private LocationEngineListener locationEngineListener;
+    private Position destination;
+
+    // Firebase related variables
     private FirebaseAuth mAuth;
+    private DatabaseReference otherUserRef;
     private DatabaseReference dbRef = FirebaseDatabase.getInstance().getReference();
     private FirebaseAuth.AuthStateListener mAuthListener;
     private User user = new User("jeff@jeff.com");
@@ -118,28 +141,19 @@ public class FollowRouteActivity extends AppCompatActivity {
         if (locations != null) {
             finish = locations.getParcelable("nextLoc");
         }
-        final Position destination =
-                Position.fromCoordinates(finish.getLongitude(), finish.getLatitude());
+        destination = Position.fromCoordinates(finish.getLongitude(), finish.getLatitude());
 
         // Mapbox Setup
         mapView = (MapView) findViewById(R.id.mapview);
         mapView.onCreate(savedInstanceState);
 
         // Add a MapboxMap
-        mapView.getMapAsync(new OnMapReadyCallback() {
-            @Override
-            public void onMapReady(MapboxMap mapboxMap) {
-                map = mapboxMap;
-                // Center to current location
-                updateMap(getLocation().getLatitude(), getLocation().getLongitude(), destination);
-                // Mark to final destination
-                mapboxMap.addMarker(new MarkerOptions()
-                        .position(new LatLng(destination.getLatitude(), destination.getLongitude())));
-            }
-        });
+        mapView.getMapAsync(this);
+
+        navigation = new MapboxNavigation(this, Mapbox.getAccessToken());
 
         /* Updates map to where the user is once the location changes */
-        locationEngineListener = new LocationEngineListener() {
+        /*locationEngineListener = new LocationEngineListener() {
             @Override
             public void onConnected() {
                 // No action needed
@@ -150,14 +164,61 @@ public class FollowRouteActivity extends AppCompatActivity {
                 if (location != null) {
                     // Move map to where the user location is.
                     updateMap(getLocation().getLatitude(), getLocation().getLongitude(), destination);
-                    /* Might or might not need this?
+                    *//* Might or might not need this?
                     // Removes listener so it's not constantly updating
                     locationEngine.removeLocationEngineListener(this);
-                    */
+                    *//*
                 }
             }
-        };
+        };*/
     }
+
+    @Override
+    public void onMapReady(MapboxMap mapboxMap) {
+        this.map = mapboxMap;
+
+        mapboxMap.moveCamera(CameraUpdateFactory.zoomBy(12));
+
+        locationEngine = new MockLocationEngine();
+        //map.setLocationSource(locationEngine);
+
+        // Center to current location
+        updateMap(getLocation().getLatitude(), getLocation().getLongitude(), destination);
+        // Mark to final destination
+        mapboxMap.addMarker(new MarkerOptions()
+                .position(new LatLng(destination.getLatitude(), destination.getLongitude())));
+
+        if (PermissionsManager.areLocationPermissionsGranted(this)) {
+            mapboxMap.setMyLocationEnabled(true);
+            mapboxMap.getTrackingSettings().setMyLocationTrackingMode(MyLocationTracking.TRACKING_FOLLOW);
+            mapboxMap.getTrackingSettings().setDismissAllTrackingOnGesture(false);
+        }
+
+        Log.d("onMapReady: ", "Calculating route");
+        calculateRoute();
+        Log.d("onMapReady: ", "returned from calculate");
+
+        if (currentRoute == null)
+            Log.e("onMapReady: ", "Route is null");
+
+        // Attach all of our navigation listeners.
+        navigation.addNavigationEventListener(FollowRouteActivity.this);
+        navigation.addProgressChangeListener(FollowRouteActivity.this);
+        navigation.addAlertLevelChangeListener(FollowRouteActivity.this);
+
+        // Adjust location engine to force a gps reading every second. This isn't required but gives an overall
+        // better navigation experience for users. The updating only occurs if the user moves 3 meters or further
+        // from the last update.
+        locationEngine.setInterval(0);
+        locationEngine.setPriority(LocationEnginePriority.HIGH_ACCURACY);
+        locationEngine.setFastestInterval(1000);
+        locationEngine.activate();
+
+        /*((MockLocationEngine) locationEngine).setRoute(currentRoute);
+        navigation.setLocationEngine(locationEngine);
+        navigation.startNavigation(currentRoute);*/
+    }
+
 
     private void updateMap(double latitude, double longitude, Position destination) {
         // Animate camera to geocoder result location
@@ -168,10 +229,7 @@ public class FollowRouteActivity extends AppCompatActivity {
         map.animateCamera(CameraUpdateFactory.newCameraPosition(cameraPosition), 5000, null);
 
         try {
-            getRoute(
-                    Position.fromCoordinates(getLocation().getLongitude(),
-                            getLocation().getLatitude()),
-                    destination);
+            calculateRoute();
         } catch (ServicesException servicesException) {
             servicesException.printStackTrace();
         }
@@ -204,7 +262,51 @@ public class FollowRouteActivity extends AppCompatActivity {
         return lastLocation;
     }
 
-    private void getRoute(Position origin, Position destination) throws ServicesException {
+    private void calculateRoute() {
+        Location userLocation = map.getMyLocation();
+        if (userLocation == null) {
+            Timber.d("calculateRoute: User location is null, therefore, origin can't be set.");
+            return;
+        }
+
+        Position origin = (Position.fromCoordinates(userLocation.getLongitude(), userLocation.getLatitude()));
+        if (TurfMeasurement.distance(origin, destination, TurfConstants.UNIT_METERS) < 50) {
+            map.removeMarker(destinationMarker);
+            return;
+        }
+
+        navigation.getRoute(origin, destination, new Callback<DirectionsResponse>() {
+            @Override
+            public void onResponse(Call<DirectionsResponse> call, Response<DirectionsResponse> response) {
+                Log.d(TAG, "Response code: " + response.code());
+                if (response.body() == null) {
+                    Log.e(TAG, "No routes found, make sure you set the right user");
+                    return;
+                } else if (response.body().getRoutes().size() < 1) {
+                    Log.e(TAG, "No routes found");
+                    return;
+                }
+
+                currentRoute = response.body().getRoutes().get(0);
+                Log.d(TAG, "Distance: " + currentRoute.getDistance());
+                Toast.makeText(
+                        FollowRouteActivity.this,
+                        "Route is " + currentRoute.getDistance() + " meters long.",
+                        Toast.LENGTH_SHORT).show();
+                ((MockLocationEngine) locationEngine).setRoute(currentRoute);
+                navigation.setLocationEngine(locationEngine);
+                navigation.startNavigation(currentRoute);
+                drawRoute(currentRoute);
+            }
+
+            @Override
+            public void onFailure(Call<DirectionsResponse> call, Throwable throwable) {
+                Timber.e("onFailure: navigation.getRoute()", throwable);
+            }
+        });
+    }
+
+    /*private void getRoute(Position origin, Position destination) throws ServicesException {
         MapboxNavigation navigation = new MapboxNavigation(this, Mapbox.getAccessToken());
 
         LocationEngine locationEngine = LostLocationEngine.getLocationEngine(this);
@@ -259,108 +361,6 @@ public class FollowRouteActivity extends AppCompatActivity {
                             user.setRoute(currentRoute);
                             MyDirectionsRoute myroute = new MyDirectionsRoute(currentRoute);
                             dbRef.child("users").child(fb_user.getUid()).child("route").setValue(myroute);
-                            /*dbRef.child("users").child(fb_user.getUid()).child("route").child("duration")
-                                    .setValue(user.route.getDuration());
-                            dbRef.child("users").child(fb_user.getUid()).child("route").child("distance")
-                                    .setValue(user.route.getDistance());
-                            dbRef.child("users").child(fb_user.getUid()).child("route").child("geometry")
-                                    .setValue(user.route.getGeometry());
-                            dbRef.child("users").child(fb_user.getUid()).child("route").child("profileIdentifier")
-                                    .setValue("mapbox/driving");
-                            //For the legs
-                            for (int i = 0; i < user.route.getLegs().size(); i++) {
-                                RouteLeg curLeg = user.route.getLegs().get(i);
-                                dbRef.child("users").child(fb_user.getUid()).child("route").child("legs").child(Integer.toString(i))
-                                        .child("description").setValue(curLeg.getSummary());
-                                //need destination
-                                dbRef.child("users").child(fb_user.getUid()).child("route").child("legs").child(Integer.toString(i))
-                                        .child("distance").setValue(curLeg.getDistance());
-                                //need expected travel time
-                                dbRef.child("users").child(fb_user.getUid()).child("route").child("legs").child(Integer.toString(i))
-                                        .child("name").setValue(curLeg.getSummary());
-                                dbRef.child("users").child(fb_user.getUid()).child("route").child("legs").child(Integer.toString(i))
-                                        .child("profileIdentifier").setValue("mapbox/driving");
-                                //need source
-                                //For the steps
-                                for (int j = 0; j < curLeg.getSteps().size(); j++) {
-                                    LegStep curStep = curLeg.getSteps().get(j);
-                                    dbRef.child("users").child(fb_user.getUid()).child("route").child("legs")
-                                            .child(Integer.toString(i)).child("steps").child(Integer.toString(j))
-                                            .child("geometry").setValue(curStep.getGeometry());
-                                    dbRef.child("users").child(fb_user.getUid()).child("route").child("legs")
-                                            .child(Integer.toString(i)).child("steps").child(Integer.toString(j))
-                                            .child("distance").setValue(curStep.getDistance());
-                                    dbRef.child("users").child(fb_user.getUid()).child("route").child("legs")
-                                            .child(Integer.toString(i)).child("steps").child(Integer.toString(j))
-                                            .child("duration").setValue(curStep.getDuration());
-                                    dbRef.child("users").child(fb_user.getUid()).child("route").child("legs")
-                                            .child(Integer.toString(i)).child("steps").child(Integer.toString(j))
-                                            .child("mode").setValue(curStep.getMode());
-                                    dbRef.child("users").child(fb_user.getUid()).child("route").child("legs")
-                                            .child(Integer.toString(i)).child("steps").child(Integer.toString(j))
-                                            .child("name").setValue(curStep.getName());
-                                    // Remember to do intersections and maneuvers
-                                    // for manuver
-                                    dbRef.child("users").child(fb_user.getUid()).child("route").child("legs")
-                                            .child(Integer.toString(i)).child("steps").child(Integer.toString(j))
-                                            .child("maneuver").child("location")
-                                            .child("0").setValue(curStep.getManeuver().getLocation()[0]);
-                                    dbRef.child("users").child(fb_user.getUid()).child("route").child("legs")
-                                            .child(Integer.toString(i)).child("steps").child(Integer.toString(j))
-                                            .child("maneuver").child("location")
-                                            .child("1").setValue(curStep.getManeuver().getLocation()[1]);
-                                    dbRef.child("users").child(fb_user.getUid()).child("route").child("legs")
-                                            .child(Integer.toString(i)).child("steps").child(Integer.toString(j))
-                                            .child("maneuver").child("bearing_before")
-                                            .setValue(curStep.getManeuver().getBearingBefore());
-                                    dbRef.child("users").child(fb_user.getUid()).child("route").child("legs")
-                                            .child(Integer.toString(i)).child("steps").child(Integer.toString(j))
-                                            .child("maneuver").child("bearing_after")
-                                            .setValue(curStep.getManeuver().getBearingAfter());
-                                    dbRef.child("users").child(fb_user.getUid()).child("route").child("legs")
-                                            .child(Integer.toString(i)).child("steps").child(Integer.toString(j))
-                                            .child("maneuver").child("instruction")
-                                            .setValue(curStep.getManeuver().getInstruction());
-                                    dbRef.child("users").child(fb_user.getUid()).child("route").child("legs")
-                                            .child(Integer.toString(i)).child("steps").child(Integer.toString(j))
-                                            .child("maneuver").child("type")
-                                            .setValue(curStep.getManeuver().getType());
-                                    dbRef.child("users").child(fb_user.getUid()).child("route").child("legs")
-                                            .child(Integer.toString(i)).child("steps").child(Integer.toString(j))
-                                            .child("maneuver").child("modifier")
-                                            .setValue(curStep.getManeuver().getModifier());
-                                    // for intersections
-                                    for (int k = 0; k < curStep.getIntersections().size(); k++) {
-                                        StepIntersection curInter = curStep.getIntersections().get(k);
-                                        dbRef.child("users").child(fb_user.getUid()).child("route").child("legs")
-                                                .child(Integer.toString(i)).child("steps").child(Integer.toString(j))
-                                                .child("intersections").child("location").child("0").setValue(curInter.getLocation()[0]);
-                                        dbRef.child("users").child(fb_user.getUid()).child("route").child("legs")
-                                                .child(Integer.toString(i)).child("steps").child(Integer.toString(j))
-                                                .child("intersections").child("location").child("1").setValue(curInter.getLocation()[1]);
-                                        // for bearings
-                                        for (int l = 0; l < curInter.getBearings().length; l++) {
-                                            dbRef.child("users").child(fb_user.getUid()).child("route").child("legs")
-                                                    .child(Integer.toString(i)).child("steps").child(Integer.toString(j))
-                                                    .child("intersections").child("bearings").child(Integer.toString(l))
-                                                    .setValue(curInter.getBearings()[l]);
-                                        }
-                                        // for entry
-                                        for (int l = 0; l < curInter.getEntry().length; l++) {
-                                            dbRef.child("users").child(fb_user.getUid()).child("route").child("legs")
-                                                    .child(Integer.toString(i)).child("steps").child(Integer.toString(j))
-                                                    .child("intersections").child("entry").child(Integer.toString(l))
-                                                    .setValue(curInter.getEntry()[l]);
-                                        }
-                                        dbRef.child("users").child(fb_user.getUid()).child("route").child("legs")
-                                                .child(Integer.toString(i)).child("steps").child(Integer.toString(j))
-                                                .child("intersections").child("in").setValue(curInter.getIn());
-                                        dbRef.child("users").child(fb_user.getUid()).child("route").child("legs")
-                                                .child(Integer.toString(i)).child("steps").child(Integer.toString(j))
-                                                .child("intersections").child("out").setValue(curInter.getOut());
-                                    }
-                                }
-                            }*/
                             Log.v(TAG, "user route set");
                         }
 
@@ -377,7 +377,7 @@ public class FollowRouteActivity extends AppCompatActivity {
                 Toast.makeText(FollowRouteActivity.this, "Error: " + t.getMessage(), Toast.LENGTH_SHORT).show();
             }
         });
-    }
+    }*/
 
     private void drawRoute(DirectionsRoute route) {
         LineString lineString  = LineString.fromPolyline(route.getGeometry(), Constants.PRECISION_6);
@@ -414,6 +414,92 @@ public class FollowRouteActivity extends AppCompatActivity {
         return super.onOptionsItemSelected(item);
     }
 
+     /*
+   * Navigation listeners
+   */
+
+    @Override
+    public void onRunning(boolean running) {
+        if (running) {
+            Timber.d("onRunning: Started");
+        } else {
+            Timber.d("onRunning: Stopped");
+        }
+    }
+
+    @Override
+    public void onProgressChange(Location location, RouteProgress routeProgress) {
+        Timber.d("onProgressChange: fraction of route traveled: %f", routeProgress.getFractionTraveled());
+        RouteLegProgress curLeg = routeProgress.getCurrentLegProgress();
+        LegStep curStep = curLeg.getCurrentStep();
+
+        Log.d(TAG, "Next route leg summary: " + curLeg.getCurrentStepProgress());
+        TextView nextDir = (TextView) findViewById(R.id.Nextdirection);
+        TextView timeRem = (TextView) findViewById(R.id.TimeRemaining);
+        TextView distRem = (TextView) findViewById(R.id.DistanceLeft);
+        ImageView arrow = (ImageView) findViewById(R.id.arrow);
+
+        int timeMin = (int) (curLeg.getDurationRemaining() / 60);
+        double dist = curLeg.getDistanceRemaining() / 1609.34;
+        String diststr = String.format("%.1f miles", dist);
+
+        nextDir.setText(curStep.getManeuver().getInstruction());
+        timeRem.setText(timeMin + " minutes");
+        distRem.setText(diststr);
+    }
+
+    @Override
+    public void onAlertLevelChange(int alertLevel, RouteProgress routeProgress) {
+
+        switch (alertLevel) {
+            case NavigationConstants.HIGH_ALERT_LEVEL:
+                Toast.makeText(FollowRouteActivity.this, "HIGH", Toast.LENGTH_LONG).show();
+                break;
+            case NavigationConstants.MEDIUM_ALERT_LEVEL:
+                Toast.makeText(FollowRouteActivity.this, "MEDIUM", Toast.LENGTH_LONG).show();
+                break;
+            case NavigationConstants.LOW_ALERT_LEVEL:
+                Toast.makeText(FollowRouteActivity.this, "LOW", Toast.LENGTH_LONG).show();
+                break;
+            case NavigationConstants.ARRIVE_ALERT_LEVEL:
+                Toast.makeText(FollowRouteActivity.this, "ARRIVE", Toast.LENGTH_LONG).show();
+                break;
+            case NavigationConstants.DEPART_ALERT_LEVEL:
+                Toast.makeText(FollowRouteActivity.this, "DEPART", Toast.LENGTH_LONG).show();
+                break;
+            default:
+            case NavigationConstants.NONE_ALERT_LEVEL:
+                Toast.makeText(FollowRouteActivity.this, "NONE", Toast.LENGTH_LONG).show();
+                break;
+        }
+    }
+
+    @Override
+    public void userOffRoute(Location location) {
+        Position newOrigin = Position.fromCoordinates(location.getLongitude(), location.getLatitude());
+        navigation.getRoute(newOrigin, destination, new Callback<DirectionsResponse>() {
+            @Override
+            public void onResponse(Call<DirectionsResponse> call, Response<DirectionsResponse> response) {
+                DirectionsRoute route = response.body().getRoutes().get(0);
+                FollowRouteActivity.this.currentRoute = route;
+
+                // Remove old route line from map and draw the new one.
+                if (routeLine != null) {
+                    map.removePolyline(routeLine);
+                }
+                drawRoute(route);
+            }
+
+            @Override
+            public void onFailure(Call<DirectionsResponse> call, Throwable throwable) {
+                Timber.e("onFailure: navigation.getRoute()", throwable);
+            }
+        });
+    }
+
+    /*
+   * Activity lifecycle methods
+   */
     @Override
     public void onStart() {
         super.onStart();
@@ -454,6 +540,15 @@ public class FollowRouteActivity extends AppCompatActivity {
     protected void onDestroy() {
         super.onDestroy();
         mapView.onDestroy();
+
+        // Remove all navigation listeners
+        navigation.removeAlertLevelChangeListener(this);
+        navigation.removeNavigationEventListener(this);
+        navigation.removeProgressChangeListener(this);
+        navigation.removeOffRouteListener(this);
+
+        // End the navigation session
+        navigation.endNavigation();
     }
 
     public void logOut() {

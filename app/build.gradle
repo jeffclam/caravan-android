@@ -49,7 +49,7 @@ dependencies {
         transitive = true
     }
     compile 'com.mapbox.mapboxsdk:mapbox-android-ui:2.1.0'
-    compile 'com.mapbox.mapboxsdk:mapbox-android-navigation:0.1.0'
+    compile 'com.mapbox.mapboxsdk:mapbox-android-navigation:0.2.0'
 }
 
 repositories {
