@@ -108,6 +108,7 @@ public class FollowRouteActivity extends AppCompatActivity implements OnMapReady
     private DatabaseReference dbRef = FirebaseDatabase.getInstance().getReference();
     private FirebaseAuth.AuthStateListener mAuthListener;
     private User user = new User("jeff@jeff.com");
+    private int roomCode;
 
 
     @Override
@@ -131,6 +132,8 @@ public class FollowRouteActivity extends AppCompatActivity implements OnMapReady
                 }
             }
         };
+
+        roomCode = getIntent().getIntExtra("ROOM_CODE", 0);
 
         locationEngine = LocationSource.getLocationEngine(this);
         locationEngine.activate();
@@ -253,6 +256,13 @@ public class FollowRouteActivity extends AppCompatActivity implements OnMapReady
                     // Move map to where the user location is.
                     map.moveCamera(CameraUpdateFactory.newLatLngZoom(new LatLng(location), 16));
                     locationEngine.removeLocationEngineListener(this);
+                    FirebaseUser fb_user = mAuth.getCurrentUser();
+                    if (fb_user != null) {
+                        dbRef.child("rooms").child(Integer.toString(roomCode)).child("users").child(fb_user.getUid()).child("0").
+                                setValue(location.getLongitude());
+                        dbRef.child("rooms").child(Integer.toString(roomCode)).child("users").child(fb_user.getUid()).child("1").
+                                setValue(location.getLatitude());
+                    }
                 }
             }
         };

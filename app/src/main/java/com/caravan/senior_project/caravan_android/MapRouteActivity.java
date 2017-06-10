@@ -5,6 +5,7 @@ import android.graphics.Color;
 import android.graphics.drawable.Drawable;
 import android.location.Location;
 import android.os.Bundle;
+import android.support.annotation.NonNull;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
@@ -13,6 +14,10 @@ import android.view.MenuItem;
 import android.view.View;
 import android.widget.Toast;
 
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
+import com.google.firebase.database.DatabaseReference;
+import com.google.firebase.database.FirebaseDatabase;
 import com.mapbox.mapboxsdk.Mapbox;
 import com.mapbox.mapboxsdk.annotations.Icon;
 import com.mapbox.mapboxsdk.annotations.IconFactory;
@@ -53,6 +58,14 @@ public class MapRouteActivity extends AppCompatActivity {
     private DirectionsRoute currentRoute;
     private Location nextLoc;
     private Polyline routeLine;
+    private int roomCode;
+
+    // Firebase related variables
+    private FirebaseAuth mAuth;
+    private DatabaseReference otherUserRef;
+    private DatabaseReference dbRef = FirebaseDatabase.getInstance().getReference();
+    private FirebaseAuth.AuthStateListener mAuthListener;
+    private User user = new User("jeff@jeff.com");
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -61,6 +74,22 @@ public class MapRouteActivity extends AppCompatActivity {
         Mapbox.getInstance(this, getString(R.string.access_token));
 
         setContentView(R.layout.activity_directions);
+
+        mAuth = FirebaseAuth.getInstance();
+        mAuthListener = new FirebaseAuth.AuthStateListener() {
+            @Override
+            public void onAuthStateChanged(@NonNull FirebaseAuth firebaseAuth) {
+                FirebaseUser user = firebaseAuth.getCurrentUser();
+                if (user != null) {
+                    //user is signed in
+                    Log.d(TAG, "onAuthStateChanged:signed_in" + user.getUid());
+                } else {
+                    //user not signed in
+                    Log.d(TAG, "onAuthStateChanged:signed_out");
+                    logOut();
+                }
+            }
+        };
 
         // Icon object for custom marker image
         IconFactory iconFactory = IconFactory.getInstance(MapRouteActivity.this);
@@ -84,6 +113,19 @@ public class MapRouteActivity extends AppCompatActivity {
                     (origin.getLatitude() + destination.getLatitude()) / 2,
                     (origin.getLongitude() + destination.getLongitude()) / 2
             );
+
+            roomCode = generateRoomCode();
+            dbRef.child("rooms").child(Integer.toString(roomCode)).child("start").child("0").setValue(start.getLongitude());
+            dbRef.child("rooms").child(Integer.toString(roomCode)).child("start").child("1").setValue(start.getLatitude());
+            dbRef.child("rooms").child(Integer.toString(roomCode)).child("finish").child("0").setValue(finish.getLongitude());
+            dbRef.child("rooms").child(Integer.toString(roomCode)).child("finish").child("1").setValue(finish.getLatitude());
+            FirebaseUser fb_user = mAuth.getCurrentUser();
+            if (fb_user != null) {
+                dbRef.child("rooms").child(Integer.toString(roomCode)).child("users").child(fb_user.getUid()).child("0").
+                        setValue(start.getLongitude());
+                dbRef.child("rooms").child(Integer.toString(roomCode)).child("users").child(fb_user.getUid()).child("1").
+                        setValue(start.getLatitude());
+            }
 
             // Create a mapView
             mapView = (MapView) findViewById(R.id.mapview);
@@ -181,11 +223,17 @@ public class MapRouteActivity extends AppCompatActivity {
     
      /* Start route, send location information to the next activity */
      public void startRoute(View view) {
-        Intent intent = new Intent(this, FollowRouteActivity.class);
-        Bundle locations = new Bundle();
-        locations.putParcelable("nextLoc", nextLoc);
-        intent.putExtra("locations", locations);
-        startActivity(intent);
+         Intent intent = new Intent(this, FollowRouteActivity.class);
+         Bundle locations = new Bundle();
+         locations.putParcelable("nextLoc", nextLoc);
+         intent.putExtra("locations", locations);
+         intent.putExtra("ROOM_CODE", roomCode);
+         startActivity(intent);
+    }
+
+    /* Generate ramdom room code */
+    public int generateRoomCode() {
+        return 1111;
     }
 
     @Override
@@ -201,7 +249,6 @@ public class MapRouteActivity extends AppCompatActivity {
         // automatically handle clicks on the Home/Up button, so long
         // as you specify a parent activity in AndroidManifest.xml.
         int id = item.getItemId();
-
         //noinspection SimplifiableIfStatement
         if (id == R.id.action_settings) {
             return true;
@@ -250,5 +297,11 @@ public class MapRouteActivity extends AppCompatActivity {
     protected void onDestroy() {
         super.onDestroy();
         mapView.onDestroy();
+    }
+
+    public void logOut() {
+        Intent intent = new Intent(this, LoginActivity.class);
+        startActivity(intent);
+        this.finish();
     }
 }
