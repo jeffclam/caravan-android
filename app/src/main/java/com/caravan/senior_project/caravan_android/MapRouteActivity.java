@@ -12,6 +12,7 @@ import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import com.google.firebase.auth.FirebaseAuth;
@@ -126,6 +127,9 @@ public class MapRouteActivity extends AppCompatActivity {
                 dbRef.child("rooms").child(Integer.toString(roomCode)).child("users").child(fb_user.getUid()).child("1").
                         setValue(start.getLatitude());
             }
+
+            TextView codeView = (TextView) findViewById(R.id.Roomcode);
+            codeView.setText("Room Code: " + roomCode);
 
             // Create a mapView
             mapView = (MapView) findViewById(R.id.mapview);

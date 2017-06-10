@@ -22,7 +22,9 @@
             mapbox:mapbox_cameraTargetLng="-77.036"
             mapbox:mapbox_styleUrl="@string/mapbox_style_mapbox_streets"
             mapbox:mapbox_cameraTilt="20"
-            mapbox:mapbox_cameraZoom="12" />
+            mapbox:mapbox_cameraZoom="12" >
+
+        </com.mapbox.mapboxsdk.maps.MapView>
 
         <Button
             android:id="@+id/start_route"
@@ -39,6 +41,20 @@
             android:onClick="currentLocation"
             android:layout_alignRight="@+id/mapview" />
 
+
     </RelativeLayout>
+
+    <TextView
+        android:id="@+id/Roomcode"
+        android:layout_width="match_parent"
+        android:layout_height="106dp"
+        android:layout_gravity="bottom"
+        android:background="@color/common_google_signin_btn_text_light_default"
+        android:orientation="vertical"
+        android:paddingTop="20dp"
+        android:text="Loading Room Code..."
+        android:textSize="20sp"
+        android:textAlignment="center"
+        android:textColor="#FFFF"/>
 
 </android.support.design.widget.CoordinatorLayout>
