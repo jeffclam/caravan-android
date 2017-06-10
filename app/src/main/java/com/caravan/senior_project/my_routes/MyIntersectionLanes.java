@@ -11,7 +11,7 @@ import java.util.List;
 
 public class MyIntersectionLanes {
     private boolean valid;
-    private List<String> indications = new ArrayList<String>();
+    private List<String> indications = new ArrayList<>();
 
     /**
      * Empty constructor

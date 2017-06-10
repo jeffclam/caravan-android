@@ -99,13 +99,16 @@ public class MainActivity extends AppCompatActivity implements PermissionsListen
         myDrawerLayout = (DrawerLayout) findViewById(R.id.drawer_layout);
         myDrawerList = (ListView) findViewById(R.id.left_drawer);
 
-        myDrawerList.setAdapter(new ArrayAdapter<String>(this,
+        myDrawerList.setAdapter(new ArrayAdapter<>(this,
                 R.layout.drawer_list_item, myDrawerButtons));
         myDrawerList.setOnItemClickListener(new DrawerItemClickListener());
 
         // Get the LocationEngine to track current location
         locationEngine = LocationSource.getLocationEngine(this);
         locationEngine.activate();
+
+        // Initialize mAuth
+        mAuth = FirebaseAuth.getInstance();
 
         // Create a mapView
         mapView = (MapView) findViewById(R.id.mapview);
