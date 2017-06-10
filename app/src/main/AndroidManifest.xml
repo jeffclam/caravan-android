@@ -18,10 +18,11 @@
         android:label="@string/app_name"
         android:supportsRtl="true"
         android:theme="@style/AppTheme">
-        <service android:name="com.mapbox.mapboxsdk.telemetry.TelemetryService" />
+
         <activity
             android:name=".LoginActivity"
-            android:label="@string/title_activity_login">
+            android:label="@string/title_activity_login"
+            android:theme="@style/AppTheme.NoActionBar">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
@@ -47,6 +48,7 @@
             android:name=".FollowRouteActivity"
             android:label="@string/title_activity_follow_route"
             android:theme="@style/AppTheme.NoActionBar" />
+
     </application>
 
 </manifest>

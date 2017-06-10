@@ -3,14 +3,10 @@ package com.caravan.senior_project.caravan_android;
 import android.animation.Animator;
 import android.animation.AnimatorListenerAdapter;
 import android.annotation.TargetApi;
-import android.app.Dialog;
-import android.app.DialogFragment;
-import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.support.annotation.NonNull;
 import android.support.design.widget.Snackbar;
-import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.app.LoaderManager.LoaderCallbacks;
 
@@ -32,6 +28,8 @@ import android.widget.ArrayAdapter;
 import android.widget.AutoCompleteTextView;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.FrameLayout;
+import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -113,6 +111,14 @@ public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<
             }
         });
 
+        Button registerButton = (Button) findViewById(R.id.register_fragment_button);
+        registerButton.setOnClickListener(new OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                signUpAccount(mEmailView.getText().toString());
+            }
+        });
+
         mLoginFormView = findViewById(R.id.login_form);
         mProgressView = findViewById(R.id.login_progress);
     }
@@ -165,26 +171,21 @@ public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<
         }
     }
 
-    void signUpAccount(String email, String password) {
-        Log.d(TAG, "signUpAccount: " + email + " | " + password);
+    void signUpAccount(String email) {
+        Log.d(TAG, "signUpAccount: " + email);
+        Bundle bundle = new Bundle();
+        bundle.putString("email", email);
 
-        showProgress(true);
-
-        mAuth.createUserWithEmailAndPassword(email, password)
-                .addOnCompleteListener(this, new OnCompleteListener<AuthResult>() {
-                    @Override
-                    public void onComplete(@NonNull Task<AuthResult> task) {
-                        Log.d(TAG, "createUserWithEmail:onComplete:" + task.isSuccessful());
-
-                        //if sign up fails
-                        if (!task.isSuccessful()) {
-                            Toast.makeText(LoginActivity.this, R.string.error_invalid_email,
-                                    Toast.LENGTH_SHORT).show();
-                        }
-
-                        showProgress(false);
-                    }
-                });
+        if (findViewById(R.id.fragment_container) != null) {
+            RegisterFragment registerFragment = new RegisterFragment();
+            registerFragment.setArguments(bundle);
+            FrameLayout frameLayout = (FrameLayout) findViewById(R.id.fragment_container);
+            frameLayout.setVisibility(View.VISIBLE);
+            ScrollView scrollView = (ScrollView) findViewById(R.id.login_form);
+            scrollView.setVisibility(View.GONE);
+            getSupportFragmentManager().beginTransaction()
+                    .add(R.id.fragment_container, registerFragment).commit();
+        }
     }
 
     /**

@@ -1,4 +1,4 @@
-package com.caravan.senior_project.caravan_android;
+package com.caravan.senior_project.my_routes;
 
 import com.google.gson.annotations.SerializedName;
 import com.mapbox.services.api.directions.v5.models.StepManeuver;
@@ -259,6 +259,24 @@ public class MyStepManeuver {
                 + ", modifier='" + modifier + '\''
                 + ", exit=" + exit
                 + '}';
+    }
+
+    public StepManeuver maneuverToStepManeuver() {
+        StepManeuver maneuver = new StepManeuver();
+
+        double[] l = new double[location.size()];
+        for (int i = 0; i < location.size(); i++)
+            l[i] = location.get(i);
+        maneuver.setLocation(l);
+
+        maneuver.setBearingAfter(getBearingAfter());
+        maneuver.setBearingBefore(getBearingBefore());
+        maneuver.setInstruction(getInstruction());
+        maneuver.setModifier(getModifier());
+        maneuver.setType(getType());
+        maneuver.setExit(exit);
+
+        return maneuver;
     }
 
 }

@@ -1,4 +1,4 @@
-package com.caravan.senior_project.caravan_android;
+package com.caravan.senior_project.my_routes;
 
 import com.google.gson.annotations.SerializedName;
 import com.mapbox.services.api.directions.v5.models.DirectionsRoute;
@@ -57,4 +57,19 @@ public class MyDirectionsRoute {
         return legs;
     }
 
+    public DirectionsRoute routeToDirectionsRoute() {
+        DirectionsRoute route = new DirectionsRoute();
+        route.setDistance(this.getDistance());
+        route.setDuration(this.getDuration());
+        route.setGeometry(this.getGeometry());
+        route.setWeight(this.weight);
+        route.setWeightName(this.weightName);
+
+        List<RouteLeg> routeLegs = new ArrayList<>();
+        for (MyRouteLeg l : this.getLegs()) {
+            routeLegs.add(l.legToRouteLeg());
+        }
+        route.setLegs(routeLegs);
+        return route;
+    }
 }

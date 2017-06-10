@@ -1,4 +1,4 @@
-package com.caravan.senior_project.caravan_android;
+package com.caravan.senior_project.my_routes;
 
 import com.mapbox.services.api.directions.v5.models.LegAnnotation;
 import com.mapbox.services.api.directions.v5.models.LegStep;
@@ -126,4 +126,18 @@ public class MyRouteLeg {
         return annotation;
     }
 
+    public RouteLeg legToRouteLeg() {
+        RouteLeg routeLeg = new RouteLeg();
+        routeLeg.setDistance(this.getDistance());
+        routeLeg.setDuration(this.duration);
+        routeLeg.setSummary(this.summary);
+
+        List<LegStep> legSteps = new ArrayList<LegStep>();
+        for (MyLegStep s : this.getSteps()) {
+            legSteps.add(s.stepToLegStep());
+        }
+        routeLeg.setSteps(legSteps);
+
+        return routeLeg;
+    }
 }

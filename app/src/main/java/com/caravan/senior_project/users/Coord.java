@@ -1,12 +1,12 @@
-package com.caravan.senior_project.caravan_android;
+package com.caravan.senior_project.users;
 
 /**
  * Created by Jeffrey on 5/2/2017.
  */
 
 public class Coord {
-    double latitude;
-    double longitude;
+    private double latitude;
+    private double longitude;
 
     public Coord() {
         //Empty Constructor
@@ -21,8 +21,16 @@ public class Coord {
         return latitude;
     }
 
+    public void setLatitude(double latitude) {
+        this.latitude = latitude;
+    }
+
     public double getLongitude() {
         return longitude;
+    }
+
+    public void setLongitude(double longitude) {
+        this.longitude = longitude;
     }
 
     public String toString() {

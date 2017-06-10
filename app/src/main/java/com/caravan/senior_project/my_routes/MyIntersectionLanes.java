@@ -1,4 +1,4 @@
-package com.caravan.senior_project.caravan_android;
+package com.caravan.senior_project.my_routes;
 
 import com.mapbox.services.api.directions.v5.models.IntersectionLanes;
 
@@ -11,7 +11,7 @@ import java.util.List;
 
 public class MyIntersectionLanes {
     private boolean valid;
-    private List<String> indications = new ArrayList<String>();
+    private List<String> indications = new ArrayList<>();
 
     /**
      * Empty constructor
@@ -84,5 +84,17 @@ public class MyIntersectionLanes {
      */
     public void setIndications(List<String> indications) {
         this.indications = indications;
+    }
+
+    public IntersectionLanes myLanesToIntersectionLanes() {
+        IntersectionLanes intersectionLanes = new IntersectionLanes();
+
+        String[] ind = new String[indications.size()];
+        for (int i = 0; i < indications.size(); i++)
+            ind[i] = indications.get(i);
+        intersectionLanes.setIndications(ind);
+        intersectionLanes.setValid(valid);
+
+        return intersectionLanes;
     }
 }
