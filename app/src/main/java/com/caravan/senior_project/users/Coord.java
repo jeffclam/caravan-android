@@ -1,4 +1,4 @@
-package com.caravan.senior_project.caravan_android;
+package com.caravan.senior_project.users;
 
 /**
  * Created by Jeffrey on 5/2/2017.

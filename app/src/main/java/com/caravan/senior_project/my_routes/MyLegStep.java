@@ -1,4 +1,4 @@
-package com.caravan.senior_project.caravan_android;
+package com.caravan.senior_project.my_routes;
 
 import com.google.gson.annotations.SerializedName;
 import com.mapbox.services.api.directions.v5.models.LegStep;
@@ -321,5 +321,29 @@ public class MyLegStep {
      */
     public void setPronunciation(String pronunciation) {
         this.pronunciation = pronunciation;
+    }
+
+    public LegStep stepToLegStep() {
+        LegStep legStep = new LegStep();
+        legStep.setDistance(this.getDistance());
+        legStep.setDuration(this.getDuration());
+        legStep.setGeometry(this.getGeometry());
+        legStep.setName(this.name);
+        legStep.setRef(this.ref);
+        legStep.setDestinations(this.destinations);
+        legStep.setMode(this.mode);
+        legStep.setPronunciation(this.pronunciation);
+        legStep.setRotaryName(this.rotaryName);
+        legStep.setRotaryPronunciation(this.rotaryPronunciation);
+
+        legStep.setManeuver(this.maneuver.maneuverToStepManeuver());
+        legStep.setWeight(this.weight);
+
+        List<StepIntersection> stepIntersections = new ArrayList<>();
+        for (MyStepIntersection si: intersections) {
+            stepIntersections.add(si.intersectionToStepIntersection());
+        }
+        legStep.setIntersections(stepIntersections);
+        return legStep;
     }
 }
