@@ -293,7 +293,7 @@ public class MainActivity extends AppCompatActivity implements PermissionsListen
                 if (fb_user != null) {
                     user = new User(fb_user.getEmail());
                     Log.v(TAG, "Uid: " + fb_user.getUid());
-                    user.setCoords(lastLocation.getLatitude(), lastLocation.getLongitude());
+                    user.setLocation(lastLocation.getLatitude(), lastLocation.getLongitude());
                     dbRef.child("users").child(fb_user.getUid()).child("user").setValue(user);
                     Log.v(TAG, "User set and sent to DB");
                 }
