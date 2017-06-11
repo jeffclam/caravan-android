@@ -118,15 +118,15 @@ public class MapRouteActivity extends AppCompatActivity {
             );
 
             roomCode = generateRoomCode();
-            dbRef.child("rooms").child(Integer.toString(roomCode)).child("start").child("0").setValue(start.getLongitude());
-            dbRef.child("rooms").child(Integer.toString(roomCode)).child("start").child("1").setValue(start.getLatitude());
-            dbRef.child("rooms").child(Integer.toString(roomCode)).child("finish").child("0").setValue(finish.getLongitude());
-            dbRef.child("rooms").child(Integer.toString(roomCode)).child("finish").child("1").setValue(finish.getLatitude());
+            dbRef.child("rooms").child(Integer.toString(roomCode)).child("start").child("1").setValue(start.getLongitude());
+            dbRef.child("rooms").child(Integer.toString(roomCode)).child("start").child("0").setValue(start.getLatitude());
+            dbRef.child("rooms").child(Integer.toString(roomCode)).child("finish").child("1").setValue(finish.getLongitude());
+            dbRef.child("rooms").child(Integer.toString(roomCode)).child("finish").child("0").setValue(finish.getLatitude());
             FirebaseUser fb_user = mAuth.getCurrentUser();
             if (fb_user != null) {
-                dbRef.child("rooms").child(Integer.toString(roomCode)).child("users").child(fb_user.getUid()).child("0").
-                        setValue(start.getLongitude());
                 dbRef.child("rooms").child(Integer.toString(roomCode)).child("users").child(fb_user.getUid()).child("1").
+                        setValue(start.getLongitude());
+                dbRef.child("rooms").child(Integer.toString(roomCode)).child("users").child(fb_user.getUid()).child("0").
                         setValue(start.getLatitude());
             }
 
