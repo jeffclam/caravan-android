@@ -6,6 +6,7 @@ package com.caravan.senior_project.caravan_android;
 import android.location.Location;
 import android.os.Handler;
 import android.os.SystemClock;
+import android.util.Log;
 
 import com.mapbox.services.android.telemetry.location.LocationEngine;
 import com.mapbox.services.android.telemetry.location.LocationEngineListener;
@@ -261,6 +262,9 @@ public class MockLocationEngine extends LocationEngine {
     public void setRoute(DirectionsRoute route) {
         this.route = route;
 
+        if (route == null)
+            Log.e("Route ", "null");
+
         if (handler != null && runnable != null) {
             handler.removeCallbacks(runnable);
         }
@@ -286,19 +290,21 @@ public class MockLocationEngine extends LocationEngine {
      * @since 2.0.0
      */
     private void calculateStepPoints() {
-        LineString line = LineString.fromPolyline(
-                route.getLegs().get(currentLeg)
-                        .getSteps().get(currentStep).getGeometry(), PRECISION_6);
+        if (route != null) {
+            LineString line = LineString.fromPolyline(
+                    route.getLegs().get(currentLeg)
+                            .getSteps().get(currentStep).getGeometry(), PRECISION_6);
 
-        if (currentStep < route.getLegs().get(currentLeg).getSteps().size() - 1) {
-            currentStep++;
-        } else if (currentLeg < route.getLegs().size() - 1) {
-            currentLeg++;
-        }
+            if (currentStep < route.getLegs().get(currentLeg).getSteps().size() - 1) {
+                currentStep++;
+            } else if (currentLeg < route.getLegs().size() - 1) {
+                currentLeg++;
+            }
 
-        sliceRoute(line, distance);
-        if (noisyGps) {
-            addNoiseToRoute(distance);
+            sliceRoute(line, distance);
+            if (noisyGps) {
+                addNoiseToRoute(distance);
+            }
         }
     }
 

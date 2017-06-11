@@ -6,6 +6,7 @@ import android.graphics.Color;
 import android.location.Location;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
+import android.support.annotation.Nullable;
 import android.support.design.widget.BaseTransientBottomBar;
 import android.support.design.widget.FloatingActionButton;
 import android.support.design.widget.Snackbar;
@@ -100,7 +101,7 @@ public class FollowRouteActivity extends AppCompatActivity implements OnMapReady
     private DirectionsRoute currentRoute;
     private LocationEngine locationEngine;
     private MapboxNavigation navigation;
-    private LocationEngineListener locationEngineListener;
+    //private LocationEngineListener locationEngineListener;
     private Position destination;
 
     // Firebase related variables
@@ -165,13 +166,13 @@ public class FollowRouteActivity extends AppCompatActivity implements OnMapReady
 
             @Override
             public void onLocationChanged(Location location) {
+                Log.d("Location", "changed");
                 if (location != null) {
                     // Move map to where the user location is.
                     updateMap(getLocation().getLatitude(), getLocation().getLongitude(), destination);
-                    *//* Might or might not need this?
+                    // Might or might not need this?
                     // Removes listener so it's not constantly updating
                     locationEngine.removeLocationEngineListener(this);
-                    *//*
                 }
             }
         };*/
@@ -181,13 +182,25 @@ public class FollowRouteActivity extends AppCompatActivity implements OnMapReady
     public void onMapReady(MapboxMap mapboxMap) {
         this.map = mapboxMap;
 
+        map.setOnMyLocationChangeListener(new MapboxMap.OnMyLocationChangeListener() {
+            @Override
+            public void onMyLocationChange(@Nullable Location location) {
+                Log.d("MyLocationChange", " " + location.getLatitude() + " " + location.getLongitude());
+                Toast.makeText(
+                        FollowRouteActivity.this,
+                        "Location changed.",
+                        Toast.LENGTH_SHORT).show();
+            }
+        });
+
         mapboxMap.moveCamera(CameraUpdateFactory.zoomBy(12));
 
-        locationEngine = new MockLocationEngine();
+        //locationEngine = new MockLocationEngine();
         //map.setLocationSource(locationEngine);
 
         // Center to current location
-        updateMap(getLocation().getLatitude(), getLocation().getLongitude(), destination);
+        //Location userLocation = mapboxMap.getMyLocation();
+        //updateMap(userLocation.getLatitude(), userLocation.getLongitude(), destination);
         // Mark to final destination
         mapboxMap.addMarker(new MarkerOptions()
                 .position(new LatLng(destination.getLatitude(), destination.getLongitude())));
@@ -213,7 +226,7 @@ public class FollowRouteActivity extends AppCompatActivity implements OnMapReady
         // Adjust location engine to force a gps reading every second. This isn't required but gives an overall
         // better navigation experience for users. The updating only occurs if the user moves 3 meters or further
         // from the last update.
-        locationEngine.setInterval(0);
+        locationEngine.setInterval(100);
         locationEngine.setPriority(LocationEnginePriority.HIGH_ACCURACY);
         locationEngine.setFastestInterval(1000);
         locationEngine.activate();
@@ -239,39 +252,53 @@ public class FollowRouteActivity extends AppCompatActivity implements OnMapReady
         }
     }
 
-    private Location getLocation() throws SecurityException{
-        Location lastLocation = locationEngine.getLastLocation();
-        if (lastLocation != null) {
-            map.moveCamera(CameraUpdateFactory.newLatLngZoom(new LatLng(lastLocation), 16));
-        }
-
-        locationEngineListener = new LocationEngineListener() {
-            @Override
-            public void onConnected() {
-                // No action needed
+    /*private Location getLocation() {
+        // Tries to get the last location of the user. If permissions not granted, fails.
+        try {
+            Location lastLocation = locationEngine.getLastLocation();
+            if (lastLocation != null) {
+                map.moveCamera(CameraUpdateFactory.newLatLngZoom(new LatLng(lastLocation), 16));
             }
 
-            @Override
-            public void onLocationChanged(Location location) {
-                if (location != null) {
-                    // Move map to where the user location is.
-                    map.moveCamera(CameraUpdateFactory.newLatLngZoom(new LatLng(location), 16));
-                    locationEngine.removeLocationEngineListener(this);
-                    FirebaseUser fb_user = mAuth.getCurrentUser();
-                    if (fb_user != null) {
-                        dbRef.child("rooms").child(Integer.toString(roomCode)).child("users").child(fb_user.getUid()).child("0").
-                                setValue(location.getLongitude());
-                        dbRef.child("rooms").child(Integer.toString(roomCode)).child("users").child(fb_user.getUid()).child("1").
-                                setValue(location.getLatitude());
+            locationEngineListener = new LocationEngineListener() {
+                @Override
+                public void onConnected() {
+                    // No action needed
+                }
+
+                @Override
+                public void onLocationChanged(Location location) {
+                    if (location != null) {
+                        // Move map to where the user location is.
+                        map.moveCamera(CameraUpdateFactory.newLatLngZoom(new LatLng(location), 16));
+                        // Removes listener so it's not constantly updating
+                        locationEngine.removeLocationEngineListener(this);
+                        // Move map to where the user location is.
+                        //updateMap(getLocation().getLatitude(), getLocation().getLongitude(), destination);
+                    } else {
+                        Log.e(TAG, "No location???");
                     }
                 }
+            };
+            locationEngine.addLocationEngineListener(locationEngineListener);
+            map.setMyLocationEnabled(true);
+
+            if (lastLocation != null) {
+                FirebaseUser fb_user = mAuth.getCurrentUser();
+                if (fb_user != null) {
+                    user = new User(fb_user.getEmail());
+                    Log.v(TAG, "Uid: " + fb_user.getUid());
+                    user.setLocation(lastLocation.getLatitude(), lastLocation.getLongitude());
+                    dbRef.child("users").child(fb_user.getUid()).child("user").setValue(user);
+                    Log.v(TAG, "User set and sent to DB");
+                }
             }
-        };
-
-        map.setMyLocationEnabled(true);
-
-        return lastLocation;
-    }
+            return lastLocation;
+        } catch (SecurityException security) {
+            Log.e(TAG, "Permission not granted");
+        }
+        return null;
+    }*/
 
     private void calculateRoute() {
         Location userLocation = map.getMyLocation();
@@ -304,7 +331,7 @@ public class FollowRouteActivity extends AppCompatActivity implements OnMapReady
                         FollowRouteActivity.this,
                         "Route is " + currentRoute.getDistance() + " meters long.",
                         Toast.LENGTH_SHORT).show();
-                ((MockLocationEngine) locationEngine).setRoute(currentRoute);
+                //locationEngine.setRoute(currentRoute);
                 navigation.setLocationEngine(locationEngine);
                 navigation.startNavigation(currentRoute);
                 drawRoute(currentRoute);
@@ -514,12 +541,14 @@ public class FollowRouteActivity extends AppCompatActivity implements OnMapReady
     @Override
     public void onStart() {
         super.onStart();
+        navigation.onStart();
         mapView.onStart();
     }
 
     @Override
     public void onStop() {
         super.onStop();
+        navigation.onStop();
         mapView.onStop();
     }
 
