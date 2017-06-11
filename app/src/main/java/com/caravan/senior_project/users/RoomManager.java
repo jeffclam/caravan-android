@@ -24,14 +24,17 @@ public class RoomManager {
     public RoomManager() {
     }
 
-    public void readRoom(String roomKey) {
+    public void readRoom(final String roomKey, final User user) {
         Log.d(TAG, "readRoom(): trying");
-
+        Log.d(TAG, "user: " + user.getUID());
+        Log.d(TAG, "user: " + user.getLocation().toString());
         ValueEventListener roomListener = new ValueEventListener() {
             @Override
             public void onDataChange(DataSnapshot dataSnapshot) {
                 try {
                     room = dataSnapshot.getValue(Room.class);
+                    room.setRoomKey(roomKey);
+                    room.addRoommate(user);
                     Log.d(TAG, "readRoom(): Successfully pulled a room.");
                 } catch (DatabaseException d) {
                     Log.e(TAG, "Error in readRoom():" + d.getMessage());
@@ -45,8 +48,9 @@ public class RoomManager {
             }
         };
 
-        if (db_room == null)
+        if (db_room == null) {
             db_room = CaravanDB.rooms.child(roomKey);
+        }
         db_room.addValueEventListener(roomListener);
     }
 

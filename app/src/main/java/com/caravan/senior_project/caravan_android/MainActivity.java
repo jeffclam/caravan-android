@@ -176,7 +176,8 @@ public class MainActivity extends AppCompatActivity implements PermissionsListen
                 FirebaseUser fb_user = mAuth.getCurrentUser();
                 if (fb_user != null) {
                     user = new User(fb_user.getEmail());
-                    Log.v(TAG, "Uid: " + fb_user.getUid());
+                    user.setUID(fb_user.getUid());
+                    Log.v(TAG, "Uid: " + user.getUID());
                     user.setLocation(lastLocation.getLatitude(), lastLocation.getLongitude());
                     dbRef.child("users").child(fb_user.getUid()).child("user").setValue(user);
                     Log.v(TAG, "User set and sent to DB");
@@ -199,7 +200,13 @@ public class MainActivity extends AppCompatActivity implements PermissionsListen
             if (rm == null) {
                 rm = new RoomManager();
             }
-            rm.readRoom(roomKey);
+
+            if (user.getLocation() == null && user.getUID() == null) {
+                user.setLocation(getLocation());
+                FirebaseUser fb_user = mAuth.getCurrentUser();
+                user.setUID(fb_user.getUid());
+            }
+            rm.readRoom(roomKey, user);
         }
     }
 
