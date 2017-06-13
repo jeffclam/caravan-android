@@ -2,6 +2,7 @@ package com.caravan.senior_project.users;
 
 import android.app.Activity;
 import android.util.Log;
+import android.widget.Toast;
 
 import com.caravan.senior_project.caravan_android.R;
 import com.google.firebase.database.DatabaseException;
@@ -24,20 +25,11 @@ public class Room {
     @Exclude private String roomKey;
     @Exclude private ArrayList<Roommate> roommates;
     @Exclude private DatabaseReference room;
-    private ArrayList<Double> start;
+    @Exclude private String self;
     private ArrayList<Double> finish;
-    private Map<String, ArrayList<Double>> users;
+    private Map<String, String> users;
 
     public Room() {
-    }
-
-    public ArrayList<Double> getStart() {
-        return start;
-    }
-
-    public void setStart(double lat, double lon) {
-        start.set(0, lat);
-        start.set(1, lon);
     }
 
     public void setFinish(double lat, double lon) {
@@ -49,7 +41,7 @@ public class Room {
         return finish;
     }
 
-    public Map<String, ArrayList<Double>> getUsers() {
+    public Map<String, String> getUsers() {
         return users;
     }
 
@@ -62,10 +54,27 @@ public class Room {
     }
 
     public ArrayList<Roommate> getRoommates() {
-        if (roommates == null || roommates.isEmpty()) {
+        if (roommates == null) {
             roommates = new ArrayList<>();
-            for (Map.Entry<String, ArrayList<Double>> entry : users.entrySet()) {
-                roommates.add(new Roommate(entry));
+        }
+
+        if (!users.isEmpty()) {
+            for (Map.Entry<String, String> entry : users.entrySet()) {
+                if (!roommates.isEmpty()) {
+                    boolean exists = false;
+                    for (Roommate r : roommates) {
+                        if (entry.getValue().equals(r.getUID()) && !entry.getValue().equals(self)) {
+                            exists = true;
+                        }
+                    }
+
+                    if (!exists) {
+                        roommates.add(new Roommate(entry));
+                    }
+                } else {
+                    if (!entry.getValue().equals(self))
+                        roommates.add(new Roommate(entry));
+                }
             }
         }
 
@@ -73,6 +82,17 @@ public class Room {
     }
 
     public void showRoommates(MapboxMap map, Activity activity) {
+        Log.d("Room", "showRoommates() called");
+        if (roommates == null) {
+            getRoommates();
+        }
+
+        if (roommates.size() == 1) {
+            Toast.makeText(activity, "You have no roommates.", Toast.LENGTH_SHORT).show();
+            return;
+        } else
+                Log.d("Room", "You have " + roommates.size() + " roommates");
+
         for (int i = 0; i < roommates.size(); i++) {
             Roommate r = roommates.get(i);
             if (r.getIcon() == null) {
@@ -82,17 +102,22 @@ public class Room {
                 Icon icon;
                 switch (i % 3) {
                     case 1:
+                        Log.d("Room", "draw dis1");
                         icon = iconFactory.fromResource(R.drawable.friend2);
                         break;
                     case 2:
+                        Log.d("Room", "draw dis2");
                         icon = iconFactory.fromResource(R.drawable.friend3);
                         break;
                     case 0:
                     default:
+                        Log.d("Room", "draw dis 3");
                         icon = iconFactory.fromResource(R.drawable.friend1);
 
                 }
                 r.getIcon().setIcon(icon);
+            } else {
+                r.getIcon().setPosition(new LatLng(r.getLatitude(), r.getLongtitude()));
             }
         }
     }
@@ -106,15 +131,17 @@ public class Room {
             if (room == null)
                 room = CaravanDB.rooms.child(roomKey);
 
-            ArrayList<Double> location = new ArrayList<>();
-            location.add(user.getLocation().getLatitude());
-            location.add(user.getLocation().getLatitude());
-            Log.d("Room", "Room: User:" + user.getUID());
-            Log.d("Room", "Room: UserLocation:" + user.getLocation().toString());
-            room.child("users").child(user.getUID()).child("0")
-                .setValue(user.getLocation().getLatitude());
-            room.child("users").child(user.getUID()).child("1")
-                  .setValue(user.getLocation().getLongitude());
+            self = user.getUID();
+
+            boolean exists = false;
+            for (Map.Entry<String, String> e : users.entrySet()) {
+                if (e.getValue().equals(user.getUID())) {
+                    exists = true;
+                }
+            }
+
+            if (!exists)
+                room.child("users").push().setValue(user.getUID());
         }
     }
 
@@ -122,7 +149,6 @@ public class Room {
         if (roomKey != null) {
             if (room == null)
                 room = CaravanDB.rooms.child(roomKey);
-            room.child("start").setValue(start);
             room.child("finish").setValue(finish);
             room.child("users").setValue(users);
         } else {

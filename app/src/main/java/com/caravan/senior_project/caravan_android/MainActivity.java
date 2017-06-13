@@ -116,6 +116,19 @@ public class MainActivity extends AppCompatActivity implements PermissionsListen
                 get_directions.setVisibility(View.VISIBLE);
             }
         });
+
+        if (user == null) {
+            FirebaseUser fb_user = mAuth.getCurrentUser();
+            if (fb_user != null) {
+                user = new User();
+                user.setUID(fb_user.getUid());
+                try {
+                    user.setLocation(getLocation());
+                } catch (Exception e) {
+                    Log.e(TAG, e.getMessage());
+                }
+            }
+        }
     }
 
     private void updateMap(double latitude, double longitude) {
@@ -173,15 +186,10 @@ public class MainActivity extends AppCompatActivity implements PermissionsListen
             map.setMyLocationEnabled(true);
 
             if (lastLocation != null) {
-                FirebaseUser fb_user = mAuth.getCurrentUser();
-                if (fb_user != null) {
-                    user = new User(fb_user.getEmail());
-                    user.setUID(fb_user.getUid());
-                    Log.v(TAG, "Uid: " + user.getUID());
-                    user.setLocation(lastLocation.getLatitude(), lastLocation.getLongitude());
-                    dbRef.child("users").child(fb_user.getUid()).child("user").setValue(user);
+                    user.setLocation(lastLocation);
+                    dbRef.child("users").child(user.getUID()).child("location").
+                            setValue(user.getLocation());
                     Log.v(TAG, "User set and sent to DB");
-                }
             }
             return lastLocation;
         } catch (SecurityException security) {
@@ -203,10 +211,13 @@ public class MainActivity extends AppCompatActivity implements PermissionsListen
 
             if (user.getLocation() == null && user.getUID() == null) {
                 user.setLocation(getLocation());
-                FirebaseUser fb_user = mAuth.getCurrentUser();
-                user.setUID(fb_user.getUid());
             }
             rm.readRoom(roomKey, user);
+            if (rm.getRoom() == null) {
+                Toast.makeText(MainActivity.this, "Room does not exist",
+                        Toast.LENGTH_LONG).show();
+            }
+            rm.showRoommates(map, MainActivity.this);
         }
     }
 
