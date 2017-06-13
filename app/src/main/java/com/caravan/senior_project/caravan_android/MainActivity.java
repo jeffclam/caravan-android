@@ -54,6 +54,7 @@ public class MainActivity extends AppCompatActivity implements PermissionsListen
     DatabaseReference dbRef = database.getReference();
     private User user;
     private RoomManager rm;
+    private String roomKey;
 
     private MapView mapView;
     private MapboxMap map;
@@ -61,6 +62,8 @@ public class MainActivity extends AppCompatActivity implements PermissionsListen
     private LocationEngineListener locationEngineListener;
     private Location nextLoc = new Location("dummyProvider");
     private PermissionsManager permissionsManager;
+
+    private Button get_directions;
 
     GeocoderAutoCompleteView autocomplete;
 
@@ -73,7 +76,7 @@ public class MainActivity extends AppCompatActivity implements PermissionsListen
         setContentView(R.layout.activity_main);
 
         // Set get buttons invisible
-        final Button get_directions = (Button) findViewById(R.id.get_directions_button);
+        get_directions = (Button) findViewById(R.id.get_directions_button);
         get_directions.setVisibility(View.INVISIBLE);
 
         // Initialize Drawer
@@ -200,7 +203,7 @@ public class MainActivity extends AppCompatActivity implements PermissionsListen
 
     public void getRoom(View view) {
         Log.d(TAG, "get_room_button pressed");
-        String roomKey = autocomplete.getText().toString();
+        roomKey = autocomplete.getText().toString();
         if (roomKey.length() != 4) {
             Toast.makeText(MainActivity.this, "Room keys are 4 characters long",
                     Toast.LENGTH_SHORT).show();
@@ -212,22 +215,41 @@ public class MainActivity extends AppCompatActivity implements PermissionsListen
             if (user.getLocation() == null && user.getUID() == null) {
                 user.setLocation(getLocation());
             }
-            rm.readRoom(roomKey, user);
+
+            rm.readRoom(roomKey, user.getUID(), new RoomManager.waitTilReady() {
+                @Override
+                public void roomExists(boolean exists) {
+                    if (exists) {
+                        rm.showRoommates(map, MainActivity.this);
+                    }
+                }
+            });
+
             if (rm.getRoom() == null) {
                 Toast.makeText(MainActivity.this, "Room does not exist",
                         Toast.LENGTH_LONG).show();
+            } else {
+                Log.d(TAG, "readRoom coords: " + rm.getLatitude() + ", " + rm.getLongitude());
+                updateMap(rm.getLatitude(), rm.getLongitude());
+                nextLoc.setLatitude(rm.getLatitude());
+                nextLoc.setLongitude(rm.getLongitude());
+                get_directions.setVisibility(View.VISIBLE);
             }
-            rm.showRoommates(map, MainActivity.this);
         }
     }
 
      public void openDirections(View view) {
-        Intent intent = new Intent(this, MapRouteActivity.class);
-        Bundle locations = new Bundle();
-        locations.putParcelable("currentLoc", getLocation());
-        locations.putParcelable("nextLoc", nextLoc);
-        intent.putExtra("locations", locations);
-        startActivity(intent);
+         Intent intent = new Intent(this, MapRouteActivity.class);
+         Bundle bundle = new Bundle();
+         bundle.putParcelable("currentLoc", getLocation());
+         if (roomKey == null) {
+             roomKey = "";
+         }
+         bundle.putParcelable("nextLoc", nextLoc);
+         bundle.putString("roomKey", roomKey);
+         bundle.putString("uid", user.getUID());
+         intent.putExtra("bundle", bundle);
+         startActivity(intent);
     }
 
     public void logOut() {

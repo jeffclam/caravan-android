@@ -30,6 +30,7 @@ public class Roommate {
     public Roommate(Map.Entry<String, String> entry) {
         roommate = new User(entry.getValue());
         db_location = CaravanDB.users.child(roommate.getUID()).child("location");
+
         locationListener = new ValueEventListener() {
             @Override
             public void onDataChange(DataSnapshot dataSnapshot) {
@@ -71,10 +72,14 @@ public class Roommate {
     }
 
     public double getLatitude() {
+        if (roommate.getLocation().isEmpty())
+            return 0;
         return roommate.getLatitude();
     }
 
     public double getLongtitude() {
+        if (roommate.getLocation().isEmpty())
+            return 0;
         return roommate.getLongitude();
     }
 }

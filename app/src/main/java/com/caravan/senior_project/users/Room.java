@@ -82,7 +82,6 @@ public class Room {
     }
 
     public void showRoommates(MapboxMap map, Activity activity) {
-        Log.d("Room", "showRoommates() called");
         if (roommates == null) {
             getRoommates();
         }
@@ -91,7 +90,7 @@ public class Room {
             Toast.makeText(activity, "You have no roommates.", Toast.LENGTH_SHORT).show();
             return;
         } else
-                Log.d("Room", "You have " + roommates.size() + " roommates");
+            Log.d("Room", "You have " + roommates.size() + " roommates");
 
         for (int i = 0; i < roommates.size(); i++) {
             Roommate r = roommates.get(i);
@@ -126,22 +125,22 @@ public class Room {
         this.roommates = roommates;
     }
 
-    public void addRoommate(User user) {
+    public void addRoommate(String user) {
         if (roomKey != null) {
             if (room == null)
                 room = CaravanDB.rooms.child(roomKey);
 
-            self = user.getUID();
+            self = user;
 
             boolean exists = false;
             for (Map.Entry<String, String> e : users.entrySet()) {
-                if (e.getValue().equals(user.getUID())) {
+                if (e.getValue().equals(user)) {
                     exists = true;
                 }
             }
 
             if (!exists)
-                room.child("users").push().setValue(user.getUID());
+                room.child("users").push().setValue(user);
         }
     }
 

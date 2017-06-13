@@ -62,13 +62,16 @@ public class MapRouteActivity extends AppCompatActivity {
     private Location nextLoc;
     private Polyline routeLine;
     private int roomCode;
+    private RoomManager rm;
 
     // Firebase related variables
     private FirebaseAuth mAuth;
     private DatabaseReference otherUserRef;
     private DatabaseReference dbRef = FirebaseDatabase.getInstance().getReference();
     private FirebaseAuth.AuthStateListener mAuthListener;
-    private User user = new User("jeff@jeff.com");
+
+    private String uid;
+    private String roomKey;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -79,20 +82,6 @@ public class MapRouteActivity extends AppCompatActivity {
         setContentView(R.layout.activity_directions);
 
         mAuth = FirebaseAuth.getInstance();
-        mAuthListener = new FirebaseAuth.AuthStateListener() {
-            @Override
-            public void onAuthStateChanged(@NonNull FirebaseAuth firebaseAuth) {
-                FirebaseUser user = firebaseAuth.getCurrentUser();
-                if (user != null) {
-                    //user is signed in
-                    Log.d(TAG, "onAuthStateChanged:signed_in" + user.getUid());
-                } else {
-                    //user not signed in
-                    Log.d(TAG, "onAuthStateChanged:signed_out");
-                    logOut();
-                }
-            }
-        };
 
         // Icon object for custom marker image
         IconFactory iconFactory = IconFactory.getInstance(MapRouteActivity.this);
@@ -101,10 +90,12 @@ public class MapRouteActivity extends AppCompatActivity {
         // Initialize a start and end from points sent from MainActivity
         Location start = new Location("dummyProvider");
         Location finish = new Location("dummyProvider");
-        Bundle locations = this.getIntent().getBundleExtra("locations");
-        if (locations != null) {
-            start = locations.getParcelable("currentLoc");
-            finish = locations.getParcelable("nextLoc");
+        Bundle bundle = this.getIntent().getBundleExtra("bundle");
+        if (bundle != null) {
+            start = bundle.getParcelable("currentLoc");
+            finish = bundle.getParcelable("nextLoc");
+            roomKey = bundle.getString("roomKey");
+            uid = bundle.getString("uid");
             nextLoc = finish;
 
             final Position origin =
@@ -116,18 +107,23 @@ public class MapRouteActivity extends AppCompatActivity {
                     (origin.getLatitude() + destination.getLatitude()) / 2,
                     (origin.getLongitude() + destination.getLongitude()) / 2
             );
-
-            roomCode = generateRoomCode();
-            dbRef.child("rooms").child(Integer.toString(roomCode)).child("start").child("1").setValue(start.getLongitude());
-            dbRef.child("rooms").child(Integer.toString(roomCode)).child("start").child("0").setValue(start.getLatitude());
-            dbRef.child("rooms").child(Integer.toString(roomCode)).child("finish").child("1").setValue(finish.getLongitude());
-            dbRef.child("rooms").child(Integer.toString(roomCode)).child("finish").child("0").setValue(finish.getLatitude());
-            FirebaseUser fb_user = mAuth.getCurrentUser();
-            if (fb_user != null) {
-                dbRef.child("rooms").child(Integer.toString(roomCode)).child("users").child(fb_user.getUid()).child("1").
-                        setValue(start.getLongitude());
-                dbRef.child("rooms").child(Integer.toString(roomCode)).child("users").child(fb_user.getUid()).child("0").
-                        setValue(start.getLatitude());
+            if (roomKey.equals("")) {
+                roomCode = generateRoomCode();
+                dbRef.child("rooms").child(Integer.toString(roomCode)).child("start").child("1").setValue(start.getLongitude());
+                dbRef.child("rooms").child(Integer.toString(roomCode)).child("start").child("0").setValue(start.getLatitude());
+                dbRef.child("rooms").child(Integer.toString(roomCode)).child("finish").child("1").setValue(finish.getLongitude());
+                dbRef.child("rooms").child(Integer.toString(roomCode)).child("finish").child("0").setValue(finish.getLatitude());
+                FirebaseUser fb_user = mAuth.getCurrentUser();
+                if (fb_user != null) {
+                    dbRef.child("rooms").child(Integer.toString(roomCode)).child("users").child(fb_user.getUid()).child("1").
+                            setValue(start.getLongitude());
+                    dbRef.child("rooms").child(Integer.toString(roomCode)).child("users").child(fb_user.getUid()).child("0").
+                            setValue(start.getLatitude());
+                }
+            } else {
+                roomCode = Integer.parseInt(roomKey);
+                rm = new RoomManager();
+                rm.readRoom(roomKey, uid);
             }
 
             TextView codeView = (TextView) findViewById(R.id.Roomcode);
@@ -168,6 +164,12 @@ public class MapRouteActivity extends AppCompatActivity {
                 }
 
             });
+
+            if (rm != null) {
+                //rm.showRoommates(map, MapRouteActivity.this);
+            } else {
+                Log.e(TAG, "rm.room is empty rn");
+            }
         }
     }
 

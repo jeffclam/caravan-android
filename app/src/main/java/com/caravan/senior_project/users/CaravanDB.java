@@ -8,8 +8,21 @@ import com.google.firebase.database.FirebaseDatabase;
  */
 
 public class CaravanDB {
-    public static DatabaseReference caravanDB = FirebaseDatabase.getInstance().getReference();
-    public static DatabaseReference roomKeys = caravanDB.child("roomKeys");
-    public static DatabaseReference rooms = caravanDB.child("rooms");
-    public static DatabaseReference users = caravanDB.child("users");
+    public static DatabaseReference root = FirebaseDatabase.getInstance().getReference();
+    public static DatabaseReference roomKeys = root.child("roomKeys");
+    public static DatabaseReference rooms = root.child("rooms");
+    public static DatabaseReference users = root.child("users");
+
+    private static CaravanDB caravanDB;
+    private static RoomManager rm;
+
+    private CaravanDB() {
+        rm = new RoomManager();
+    }
+
+    public static CaravanDB getCaravanDB() {
+        if (caravanDB == null)
+            caravanDB = new CaravanDB();
+        return caravanDB;
+    }
 }
