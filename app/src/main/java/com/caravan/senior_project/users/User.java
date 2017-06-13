@@ -1,33 +1,66 @@
 package com.caravan.senior_project.users;
 
+import android.location.Location;
+
+import com.google.firebase.database.Exclude;
+
+import java.util.ArrayList;
+
 /**
  * Created by Jeffrey on 4/10/2017.
  */
 
 public class User {
-
-    private String email;
-    private Coord location;
+    @Exclude private String UID;
+    private ArrayList<Double> location;
 
     public User() {
-        //empty constructor
+        location = new ArrayList<>();
     }
 
-    public User(String email) {
-        this.email = email;
-        location = new Coord();
+    public User(String uid) {
+        UID = uid;
+        location = new ArrayList<>();
     }
 
     public void setLocation(double lat, double lon) {
-        location.setLatitude(lat);
-        location.setLongitude(lon);
+        if (location.isEmpty()) {
+            location.add(lat);
+            location.add(lon);
+        } else {
+            location.set(0, lat);
+            location.set(1, lon);
+        }
     }
 
-    public String getEmail() {
-        return email;
+    public void setLocation(Location loc) {
+        if (location.isEmpty()) {
+            location.add(loc.getLatitude());
+            location.add(loc.getLongitude());
+        } else {
+            location.set(0, loc.getLatitude());
+            location.set(1, loc.getLongitude());
+        }
     }
 
-    public Coord getLocation() {
+    public ArrayList<Double> getLocation() {
         return location;
+    }
+
+    public Double getLatitude() {
+        return location.get(0);
+    }
+
+    public Double getLongitude() {
+        return location.get(1);
+    }
+
+    @Exclude
+    public String getUID() {
+        return UID;
+    }
+
+    public void setUID(String UID) {
+        this.UID = UID;
     }
 }

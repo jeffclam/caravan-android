@@ -109,8 +109,8 @@ public class FollowRouteActivity extends AppCompatActivity implements OnMapReady
     private DatabaseReference otherUserRef;
     private DatabaseReference dbRef = FirebaseDatabase.getInstance().getReference();
     private FirebaseAuth.AuthStateListener mAuthListener;
-    private User user = new User("jeff@jeff.com");
     private int roomCode;
+    private User user;
 
 
     @Override

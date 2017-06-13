@@ -1,7 +1,6 @@
 package com.caravan.senior_project.caravan_android;
 
 import android.content.Intent;
-import android.graphics.Color;
 import android.location.Location;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
@@ -17,23 +16,14 @@ import android.widget.Button;
 import android.widget.ListView;
 import android.widget.Toast;
 
-import com.caravan.senior_project.my_routes.MyDirectionsRoute;
-import com.caravan.senior_project.my_routes.MyLegStep;
-import com.caravan.senior_project.users.Coord;
+import com.caravan.senior_project.users.RoomManager;
 import com.caravan.senior_project.users.User;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
-import com.google.firebase.database.DataSnapshot;
-import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
-import com.google.firebase.database.ValueEventListener;
 import com.mapbox.mapboxsdk.Mapbox;
-import com.mapbox.mapboxsdk.annotations.Icon;
-import com.mapbox.mapboxsdk.annotations.IconFactory;
 import com.mapbox.mapboxsdk.annotations.MarkerOptions;
-import com.mapbox.mapboxsdk.annotations.Polyline;
-import com.mapbox.mapboxsdk.annotations.PolylineOptions;
 import com.mapbox.mapboxsdk.camera.CameraPosition;
 import com.mapbox.mapboxsdk.camera.CameraUpdateFactory;
 import com.mapbox.mapboxsdk.geometry.LatLng;
@@ -41,19 +31,14 @@ import com.mapbox.mapboxsdk.location.LocationSource;
 import com.mapbox.mapboxsdk.maps.MapView;
 import com.mapbox.mapboxsdk.maps.MapboxMap;
 import com.mapbox.mapboxsdk.maps.OnMapReadyCallback;
-import com.mapbox.services.Constants;
 import com.mapbox.services.android.ui.geocoder.GeocoderAutoCompleteView;
 import com.mapbox.services.android.telemetry.location.LocationEngine;
 import com.mapbox.services.android.telemetry.location.LocationEngineListener;
 import com.mapbox.services.android.telemetry.permissions.PermissionsListener;
 import com.mapbox.services.android.telemetry.permissions.PermissionsManager;
-import com.mapbox.services.commons.geojson.LineString;
 import com.mapbox.services.commons.models.Position;
-import com.mapbox.services.api.directions.v5.models.DirectionsRoute;
 import com.mapbox.services.api.geocoding.v5.GeocodingCriteria;
 import com.mapbox.services.api.geocoding.v5.models.CarmenFeature;
-
-import java.util.ArrayList;
 import java.util.List;
 
 
@@ -62,17 +47,13 @@ public class MainActivity extends AppCompatActivity implements PermissionsListen
     public static String TAG = "MainActivity";
 
     private String[] myDrawerButtons;
-    private DrawerLayout myDrawerLayout;
     private ListView myDrawerList;
 
     private FirebaseAuth mAuth;
-    private FirebaseAuth.AuthStateListener mAuthListener;
     FirebaseDatabase database = FirebaseDatabase.getInstance();
     DatabaseReference dbRef = database.getReference();
-    DatabaseReference otherUserRef;
-    DatabaseReference myUserRef;
     private User user;
-    private Coord friendCoord;
+    private RoomManager rm;
 
     private MapView mapView;
     private MapboxMap map;
@@ -80,7 +61,8 @@ public class MainActivity extends AppCompatActivity implements PermissionsListen
     private LocationEngineListener locationEngineListener;
     private Location nextLoc = new Location("dummyProvider");
     private PermissionsManager permissionsManager;
-    private Polyline routeLine;
+
+    GeocoderAutoCompleteView autocomplete;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -96,9 +78,7 @@ public class MainActivity extends AppCompatActivity implements PermissionsListen
 
         // Initialize Drawer
         myDrawerButtons = getResources().getStringArray(R.array.drawer_array);
-        myDrawerLayout = (DrawerLayout) findViewById(R.id.drawer_layout);
         myDrawerList = (ListView) findViewById(R.id.left_drawer);
-
         myDrawerList.setAdapter(new ArrayAdapter<>(this,
                 R.layout.drawer_list_item, myDrawerButtons));
         myDrawerList.setOnItemClickListener(new DrawerItemClickListener());
@@ -123,7 +103,7 @@ public class MainActivity extends AppCompatActivity implements PermissionsListen
         });
 
         /* Auto-completes the search bar for known locations */
-        GeocoderAutoCompleteView autocomplete = (GeocoderAutoCompleteView) findViewById(R.id.query);
+        autocomplete = (GeocoderAutoCompleteView) findViewById(R.id.query);
         autocomplete.setAccessToken(Mapbox.getAccessToken());
         autocomplete.setType(GeocodingCriteria.TYPE_POI);
         autocomplete.setOnFeatureListener(new GeocoderAutoCompleteView.OnFeatureListener() {
@@ -137,101 +117,18 @@ public class MainActivity extends AppCompatActivity implements PermissionsListen
             }
         });
 
-        // Icon object
-        IconFactory iconFactory = IconFactory.getInstance(MainActivity.this);
-        final Icon icon = iconFactory.fromResource(R.drawable.blue_marker);
-
-        /* Gets reference to other user */
-        otherUserRef = FirebaseDatabase.getInstance().getReference()
-                .child("users").child("BKGE9xrtP5V6QwWYirRF3Rxpkdv2")
-                .child("coord");
-        Log.d(TAG, "DBRef Found: " + otherUserRef.toString());
-
-        /* Listens to when the other location in the database changes */
-        ValueEventListener otherLocation = new ValueEventListener() {
-            @Override
-            public void onDataChange(DataSnapshot dataSnapshot) {
-                friendCoord = dataSnapshot.getValue(Coord.class);
-                if (dataSnapshot.exists()) {
-                    Log.v(TAG, "Other Coords: " + friendCoord.getLatitude() + ", " + friendCoord.getLongitude());
-                    
-                    /* Adds marker to friend's location
-                    map.addMarker(new MarkerViewOptions()
-                        .position(new LatLng(friendCoord.getLatitude(), friendCoord.getLongitude()))
-                        .icon(icon));
-                        */
-                }
-            }
-
-            @Override
-            public void onCancelled(DatabaseError databaseError) {
-                Log.w(TAG, "Load failed: ", databaseError.toException());
-            }
-        };
-        Log.v(TAG, "Value Event Listener: ");
-        otherUserRef.addValueEventListener(otherLocation);
-        Log.v(TAG, "Success: Finding other location");
-
-
-        // Attempts to grab the other user's route
-        myUserRef = FirebaseDatabase.getInstance().getReference()
-                .child("users").child("oB0gb53K0rS7kW7vBbMAl7Co1h03")
-                .child("route");
-        /* Listens to route in the database changes */
-        ValueEventListener the_route = new ValueEventListener() {
-            @Override
-            public void onDataChange(DataSnapshot dataSnapshot) {
+        if (user == null) {
+            FirebaseUser fb_user = mAuth.getCurrentUser();
+            if (fb_user != null) {
+                user = new User();
+                user.setUID(fb_user.getUid());
                 try {
-                    MyLegStep step = dataSnapshot.child("legs/0/steps/0").getValue(MyLegStep.class);
-                    Log.d(TAG, "Step was read.  Step.distance: " + step.getDistance());
+                    user.setLocation(getLocation());
                 } catch (Exception e) {
-                    Log.e(TAG, "Could not read Step class");
+                    Log.e(TAG, e.getMessage());
                 }
-                MyDirectionsRoute my_route = null;
-                try {
-                    my_route = dataSnapshot.getValue(MyDirectionsRoute.class);
-                    Log.d(TAG, "Route was read.  Route.distance: " + my_route.getDistance());
-                } catch (Exception e) {
-                    Log.e(TAG, "Could not read route class");
-                }
-
-                if(my_route != null) {
-                    try {
-                        DirectionsRoute d_route = my_route.routeToDirectionsRoute();
-                        Log.d(TAG, "MyRoute converted to DirectionsRoute");
-
-                        LineString lineString  = LineString.fromPolyline(d_route.getGeometry(), Constants.PRECISION_6);
-                        List<Position> positions = lineString.getCoordinates();
-                        List<LatLng> latLngs = new ArrayList<>();
-
-                        for (Position position : positions) {
-                            latLngs.add(new LatLng(position.getLatitude(), position.getLongitude()));
-                        }
-
-                        if (routeLine != null) {
-                            map.removePolyline(routeLine);
-                        }
-
-                        /* Draw the lines */
-                        routeLine = map.addPolyline(new PolylineOptions()
-                                .addAll(latLngs)
-                                .color(Color.parseColor("#960096"))
-                                .width(5f));
-                    } catch (Exception e) {
-                        Log.e(TAG, "MyRoute couldn't be converted to DirectionsRoute");
-                    }
-                } else {
-                    Log.e(TAG, "Route is still null");
-                }
-
             }
-
-            @Override
-            public void onCancelled(DatabaseError databaseError) {
-                Log.w(TAG, "Load failed: ", databaseError.toException());
-            }
-        };
-        myUserRef.addValueEventListener(the_route);
+        }
     }
 
     private void updateMap(double latitude, double longitude) {
@@ -289,20 +186,39 @@ public class MainActivity extends AppCompatActivity implements PermissionsListen
             map.setMyLocationEnabled(true);
 
             if (lastLocation != null) {
-                FirebaseUser fb_user = mAuth.getCurrentUser();
-                if (fb_user != null) {
-                    user = new User(fb_user.getEmail());
-                    Log.v(TAG, "Uid: " + fb_user.getUid());
-                    user.setLocation(lastLocation.getLatitude(), lastLocation.getLongitude());
-                    dbRef.child("users").child(fb_user.getUid()).child("user").setValue(user);
+                    user.setLocation(lastLocation);
+                    dbRef.child("users").child(user.getUID()).child("location").
+                            setValue(user.getLocation());
                     Log.v(TAG, "User set and sent to DB");
-                }
             }
             return lastLocation;
         } catch (SecurityException security) {
             Log.e(TAG, "Permission not granted");
         }
         return null;
+    }
+
+    public void getRoom(View view) {
+        Log.d(TAG, "get_room_button pressed");
+        String roomKey = autocomplete.getText().toString();
+        if (roomKey.length() != 4) {
+            Toast.makeText(MainActivity.this, "Room keys are 4 characters long",
+                    Toast.LENGTH_SHORT).show();
+        } else {
+            if (rm == null) {
+                rm = new RoomManager();
+            }
+
+            if (user.getLocation() == null && user.getUID() == null) {
+                user.setLocation(getLocation());
+            }
+            rm.readRoom(roomKey, user);
+            if (rm.getRoom() == null) {
+                Toast.makeText(MainActivity.this, "Room does not exist",
+                        Toast.LENGTH_LONG).show();
+            }
+            rm.showRoommates(map, MainActivity.this);
+        }
     }
 
      public void openDirections(View view) {
