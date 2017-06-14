@@ -1,39 +1,24 @@
 package com.caravan.senior_project.caravan_android;
 
-import android.*;
 import android.content.Intent;
 import android.graphics.Color;
 import android.location.Location;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
-import android.support.design.widget.BaseTransientBottomBar;
-import android.support.design.widget.FloatingActionButton;
-import android.support.design.widget.Snackbar;
-import android.support.v4.app.ActivityCompat;
 import android.support.v7.app.AppCompatActivity;
-import android.support.v7.widget.Toolbar;
 import android.util.Log;
-import android.view.Gravity;
-import android.view.LayoutInflater;
-import android.view.Menu;
 import android.view.MenuItem;
-import android.view.View;
-import android.view.ViewGroup;
 import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
 
 import com.caravan.senior_project.users.RoomManager;
 import com.caravan.senior_project.users.User;
-import com.google.firebase.auth.AuthResult;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
-import com.google.firebase.database.DataSnapshot;
-import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
-import com.google.firebase.database.ValueEventListener;
 import com.mapbox.mapboxsdk.Mapbox;
 import com.mapbox.mapboxsdk.annotations.Marker;
 import com.mapbox.mapboxsdk.annotations.MarkerOptions;
@@ -48,7 +33,6 @@ import com.mapbox.mapboxsdk.maps.MapView;
 import com.mapbox.mapboxsdk.maps.MapboxMap;
 import com.mapbox.mapboxsdk.maps.OnMapReadyCallback;
 import com.mapbox.services.Constants;
-import com.mapbox.services.android.location.LostLocationEngine;
 import com.mapbox.services.android.navigation.v5.MapboxNavigation;
 import com.mapbox.services.android.navigation.v5.NavigationConstants;
 import com.mapbox.services.android.navigation.v5.RouteProgress;
@@ -58,34 +42,24 @@ import com.mapbox.services.android.navigation.v5.listeners.OffRouteListener;
 import com.mapbox.services.android.navigation.v5.listeners.ProgressChangeListener;
 import com.mapbox.services.android.navigation.v5.models.RouteLegProgress;
 import com.mapbox.services.android.telemetry.location.LocationEngine;
-import com.mapbox.services.android.telemetry.location.LocationEngineListener;
 import com.mapbox.services.android.telemetry.location.LocationEnginePriority;
 import com.mapbox.services.android.telemetry.permissions.PermissionsManager;
 import com.mapbox.services.api.ServicesException;
-import com.mapbox.services.api.directions.v5.models.StepIntersection;
 import com.mapbox.services.api.utils.turf.TurfConstants;
 import com.mapbox.services.api.utils.turf.TurfMeasurement;
 import com.mapbox.services.commons.geojson.LineString;
 import com.mapbox.services.commons.models.Position;
-import com.mapbox.services.api.directions.v5.DirectionsCriteria;
-import com.mapbox.services.api.directions.v5.MapboxDirections;
 import com.mapbox.services.api.directions.v5.models.DirectionsResponse;
 import com.mapbox.services.api.directions.v5.models.DirectionsRoute;
 import com.mapbox.services.api.directions.v5.models.LegStep;
-import com.mapbox.services.api.directions.v5.models.RouteLeg;
-
-import org.w3c.dom.Text;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
 import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
 import timber.log.Timber;
-
-import static java.sql.Types.NULL;
 
 public class FollowRouteActivity extends AppCompatActivity implements OnMapReadyCallback,
         ProgressChangeListener, NavigationEventListener, AlertLevelChangeListener, OffRouteListener {
@@ -507,6 +481,16 @@ public class FollowRouteActivity extends AppCompatActivity implements OnMapReady
         nextDir.setText(curStep.getManeuver().getInstruction());
         timeRem.setText(timeMin + " minutes");
         distRem.setText(diststr);
+
+        String instruct = curStep.getManeuver().getInstruction();
+        if (instruct.toLowerCase().contains("merge"))
+            arrow.setImageResource(R.drawable.merge);
+        else if (instruct.toLowerCase().contains("right"))
+            arrow.setImageResource(R.drawable.right_turn);
+        else  if (instruct.toLowerCase().contains("left"))
+            arrow.setImageResource(R.drawable.left_turn);
+        else
+            arrow.setImageResource(R.drawable.straight);
     }
 
     @Override
