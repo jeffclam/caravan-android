@@ -24,6 +24,7 @@ import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.caravan.senior_project.users.RoomManager;
 import com.caravan.senior_project.users.User;
 import com.google.firebase.auth.AuthResult;
 import com.google.firebase.auth.FirebaseAuth;
@@ -110,7 +111,9 @@ public class FollowRouteActivity extends AppCompatActivity implements OnMapReady
     private DatabaseReference dbRef = FirebaseDatabase.getInstance().getReference();
     private FirebaseAuth.AuthStateListener mAuthListener;
     private int roomCode;
+    private RoomManager rm;
     private User user;
+    private String uid;
 
 
     @Override
@@ -136,6 +139,8 @@ public class FollowRouteActivity extends AppCompatActivity implements OnMapReady
         };
 
         roomCode = getIntent().getIntExtra("ROOM_CODE", 0);
+        rm = new RoomManager();
+        uid = getIntent().getStringExtra("UID");
 
         locationEngine = LocationSource.getLocationEngine(this);
         locationEngine.activate();
@@ -234,6 +239,24 @@ public class FollowRouteActivity extends AppCompatActivity implements OnMapReady
         /*((MockLocationEngine) locationEngine).setRoute(currentRoute);
         navigation.setLocationEngine(locationEngine);
         navigation.startNavigation(currentRoute);*/
+
+        if (rm != null) {
+            rm.readRoom(Integer.toString(roomCode), uid, new RoomManager.waitTilReady() {
+                @Override
+                public void roomExists(boolean exists) {
+                    if (exists) {
+                        rm.showRoommates(map, FollowRouteActivity.this);
+                    } else {
+                        if (rm.getRoom() == null) {
+                            Toast.makeText(FollowRouteActivity.this, "Room does not exist",
+                                    Toast.LENGTH_LONG).show();
+                        }
+                    }
+                }
+            });
+        } else {
+            Log.e(TAG, "rm.room is empty rn");
+        }
     }
 
 

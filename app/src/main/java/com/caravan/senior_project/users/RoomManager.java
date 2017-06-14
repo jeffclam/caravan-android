@@ -102,7 +102,7 @@ public class RoomManager {
 
     public void showRoommates(MapboxMap map, Activity activity) {
         if (room != null) {
-            room.showRoommates(map, activity);
+            room.getRoommates(activity, map);
         } else {
             Log.e(TAG,"Room is null");
         }
@@ -112,9 +112,9 @@ public class RoomManager {
         return room;
     }
 
-    public void getRoommates() {
+    public void getRoommates(Activity activity, MapboxMap map) {
         if (room != null) {
-            room.getRoommates();
+            room.getRoommates(activity, map);
         } else {
             Log.d(TAG, "getRoommates(): no room reference");
         }

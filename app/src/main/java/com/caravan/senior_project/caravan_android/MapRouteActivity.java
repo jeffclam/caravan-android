@@ -160,27 +160,27 @@ public class MapRouteActivity extends AppCompatActivity {
                         servicesException.printStackTrace();
                     }
 
+                    if (rm != null) {
+                        rm.readRoom(roomKey, uid, new RoomManager.waitTilReady() {
+                            @Override
+                            public void roomExists(boolean exists) {
+                                if (exists) {
+                                    rm.showRoommates(map, MapRouteActivity.this);
+                                } else {
+                                    if (rm.getRoom() == null) {
+                                        Toast.makeText(MapRouteActivity.this, "Room does not exist",
+                                                Toast.LENGTH_LONG).show();
+                                    }
+                                }
+                            }
+                        });
+                    } else {
+                        Log.e(TAG, "rm.room is empty rn");
+                    }
+
                 }
 
             });
-
-            if (rm != null) {
-                rm.readRoom(roomKey, uid, new RoomManager.waitTilReady() {
-                    @Override
-                    public void roomExists(boolean exists) {
-                        if (exists) {
-                            rm.showRoommates(map, MapRouteActivity.this);
-                        } else {
-                            if (rm.getRoom() == null) {
-                                Toast.makeText(MapRouteActivity.this, "Room does not exist",
-                                        Toast.LENGTH_LONG).show();
-                            }
-                        }
-                    }
-                });
-            } else {
-                Log.e(TAG, "rm.room is empty rn");
-            }
         }
     }
 
@@ -247,6 +247,7 @@ public class MapRouteActivity extends AppCompatActivity {
          locations.putParcelable("nextLoc", nextLoc);
          intent.putExtra("locations", locations);
          intent.putExtra("ROOM_CODE", roomCode);
+         intent.putExtra("UID", uid);
          startActivity(intent);
     }
 

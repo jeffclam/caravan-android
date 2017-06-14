@@ -1,5 +1,6 @@
 package com.caravan.senior_project.users;
 
+import android.app.Activity;
 import android.util.Log;
 
 import com.google.firebase.database.DataSnapshot;
@@ -8,6 +9,7 @@ import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.ValueEventListener;
 import com.mapbox.mapboxsdk.annotations.MarkerView;
 import com.mapbox.mapboxsdk.geometry.LatLng;
+import com.mapbox.mapboxsdk.maps.MapboxMap;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -22,15 +24,19 @@ public class Roommate {
     private MarkerView icon;
     private ValueEventListener locationListener;
     private DatabaseReference db_location;
+    private boolean gotData;
+    Roommate curRoommate;
 
     public Roommate() {
 
     }
 
-    public Roommate(Map.Entry<String, String> entry) {
+    public Roommate(Map.Entry<String, String> entry, final Room room, final MapboxMap map, final Activity activity) {
         roommate = new User(entry.getValue());
+        gotData =false;
         db_location = CaravanDB.users.child(roommate.getUID()).child("location");
 
+        Log.d("Roommate", "Creating listener");
         locationListener = new ValueEventListener() {
             @Override
             public void onDataChange(DataSnapshot dataSnapshot) {
@@ -41,6 +47,8 @@ public class Roommate {
                 }
                 Log.d("Roommate", "new Roommate(): " + getUID()
                         + " <" + getLatitude() + ", " + getLongtitude() + ">");
+                room.showRoommates(map, activity, curRoommate, roommate.getLatitude(), roommate.getLongitude(), 0);
+                gotData = true;
             }
 
             @Override
@@ -48,6 +56,8 @@ public class Roommate {
                 Log.e("Roommate", databaseError.getMessage());
             }
         };
+        curRoommate = this;
+        Log.d("Roommate", "Created listener");
         db_location.addValueEventListener(locationListener);
     }
 
@@ -70,6 +80,8 @@ public class Roommate {
     public String getUID() {
         return roommate.getUID();
     }
+
+    public boolean getGotData() { return gotData; }
 
     public double getLatitude() {
         if (roommate.getLocation().isEmpty())

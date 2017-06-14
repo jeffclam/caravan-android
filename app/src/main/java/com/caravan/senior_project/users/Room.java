@@ -10,6 +10,8 @@ import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.Exclude;
 import com.mapbox.mapboxsdk.annotations.Icon;
 import com.mapbox.mapboxsdk.annotations.IconFactory;
+import com.mapbox.mapboxsdk.annotations.MarkerOptions;
+import com.mapbox.mapboxsdk.annotations.MarkerView;
 import com.mapbox.mapboxsdk.annotations.MarkerViewOptions;
 import com.mapbox.mapboxsdk.geometry.LatLng;
 import com.mapbox.mapboxsdk.maps.MapboxMap;
@@ -53,7 +55,7 @@ public class Room {
         this.roomKey = roomKey;
     }
 
-    public ArrayList<Roommate> getRoommates() {
+    public ArrayList<Roommate> getRoommates(Activity activity, MapboxMap map) {
         if (roommates == null) {
             roommates = new ArrayList<>();
         }
@@ -69,11 +71,11 @@ public class Room {
                     }
 
                     if (!exists) {
-                        roommates.add(new Roommate(entry));
+                        roommates.add(new Roommate(entry, this, map, activity));
                     }
                 } else {
                     if (!entry.getValue().equals(self))
-                        roommates.add(new Roommate(entry));
+                        roommates.add(new Roommate(entry, this, map, activity));
                 }
             }
         }
@@ -81,10 +83,10 @@ public class Room {
         return roommates;
     }
 
-    public void showRoommates(MapboxMap map, Activity activity) {
-        if (roommates == null) {
+    public void showRoommates(MapboxMap map, Activity activity, Roommate r, double lat, double lng, int num) {
+        /*if (roommates == null) {
             getRoommates();
-        }
+        }*/
 
         if (roommates.size() == 1) {
             Toast.makeText(activity, "You have no roommates.", Toast.LENGTH_SHORT).show();
@@ -92,14 +94,16 @@ public class Room {
         } else
             Log.d("Room", "You have " + roommates.size() + " roommates");
 
-        for (int i = 0; i < roommates.size(); i++) {
-            Roommate r = roommates.get(i);
-            if (r.getIcon() == null) {
-                r.setIcon(map.addMarker(new MarkerViewOptions()
-                    .position(new LatLng(r.getLatitude(), r.getLongtitude()))));
+        if (r.getIcon() == null) {
+            MarkerViewOptions view = new MarkerViewOptions();
+            LatLng pos = new LatLng(lat, lng);
+            view.position(pos);
+            if (map != null) {
+                MarkerView mv = map.addMarker(view);
+                r.setIcon(mv);
                 IconFactory iconFactory = IconFactory.getInstance(activity);
                 Icon icon;
-                switch (i % 3) {
+                switch (num % 3) {
                     case 1:
                         Log.d("Room", "draw dis1");
                         icon = iconFactory.fromResource(R.drawable.friend2);
@@ -115,9 +119,9 @@ public class Room {
 
                 }
                 r.getIcon().setIcon(icon);
-            } else {
-                r.getIcon().setPosition(new LatLng(r.getLatitude(), r.getLongtitude()));
             }
+        } else {
+            r.getIcon().setPosition(new LatLng(r.getLatitude(), r.getLongtitude()));
         }
     }
 
