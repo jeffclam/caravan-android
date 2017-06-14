@@ -85,6 +85,7 @@ public class RoomManager {
                             x.roomExists(true);
                     } else {
                         room = null;
+                        x.roomExists(false);
                     }
                 } catch (DatabaseException d) {
                     Log.e(TAG, "Error in readRoom():" + d.getMessage());

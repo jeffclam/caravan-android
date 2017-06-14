@@ -123,7 +123,6 @@ public class MapRouteActivity extends AppCompatActivity {
             } else {
                 roomCode = Integer.parseInt(roomKey);
                 rm = new RoomManager();
-                rm.readRoom(roomKey, uid);
             }
 
             TextView codeView = (TextView) findViewById(R.id.Roomcode);
@@ -166,7 +165,19 @@ public class MapRouteActivity extends AppCompatActivity {
             });
 
             if (rm != null) {
-                //rm.showRoommates(map, MapRouteActivity.this);
+                rm.readRoom(roomKey, uid, new RoomManager.waitTilReady() {
+                    @Override
+                    public void roomExists(boolean exists) {
+                        if (exists) {
+                            rm.showRoommates(map, MapRouteActivity.this);
+                        } else {
+                            if (rm.getRoom() == null) {
+                                Toast.makeText(MapRouteActivity.this, "Room does not exist",
+                                        Toast.LENGTH_LONG).show();
+                            }
+                        }
+                    }
+                });
             } else {
                 Log.e(TAG, "rm.room is empty rn");
             }

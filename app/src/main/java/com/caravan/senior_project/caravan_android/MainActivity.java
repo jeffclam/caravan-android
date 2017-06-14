@@ -221,20 +221,19 @@ public class MainActivity extends AppCompatActivity implements PermissionsListen
                 public void roomExists(boolean exists) {
                     if (exists) {
                         rm.showRoommates(map, MainActivity.this);
+                        Log.d(TAG, "readRoom coords: " + rm.getLatitude() + ", " + rm.getLongitude());
+                        updateMap(rm.getLatitude(), rm.getLongitude());
+                        nextLoc.setLatitude(rm.getLatitude());
+                        nextLoc.setLongitude(rm.getLongitude());
+                        get_directions.setVisibility(View.VISIBLE);
+                    } else {
+                        if (rm.getRoom() == null) {
+                            Toast.makeText(MainActivity.this, "Room does not exist",
+                                    Toast.LENGTH_LONG).show();
+                        }
                     }
                 }
             });
-
-            if (rm.getRoom() == null) {
-                Toast.makeText(MainActivity.this, "Room does not exist",
-                        Toast.LENGTH_LONG).show();
-            } else {
-                Log.d(TAG, "readRoom coords: " + rm.getLatitude() + ", " + rm.getLongitude());
-                updateMap(rm.getLatitude(), rm.getLongitude());
-                nextLoc.setLatitude(rm.getLatitude());
-                nextLoc.setLongitude(rm.getLongitude());
-                get_directions.setVisibility(View.VISIBLE);
-            }
         }
     }
 
